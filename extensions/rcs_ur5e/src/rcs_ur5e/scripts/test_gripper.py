@@ -1,3 +1,5 @@
+"""Test script for the RobotiQ gripper."""
+
 from rcs_ur5e.hw import RobotiQGripper
 
 ROBOT_IP = "192.168.25.201"

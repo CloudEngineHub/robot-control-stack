@@ -1,26 +1,37 @@
+"""Hardware abstraction layer for the UR5e robot.
+Starts a Thread with Multiprocessing to control the robot via RTDE interface in real-time.
+Uses shared memory to communicate between the main process and the control process."""
+
 import multiprocessing as mp
 import time
 import typing
 from dataclasses import dataclass
 from multiprocessing.shared_memory import SharedMemory
-
 import numpy as np
+
 import rtde_control
 import rtde_receive
-from rcs_ur5e import robotiq_gripper
 
+from rcs_ur5e import robotiq_gripper
 from rcs import common
+
+from enum import IntEnum
+
+
 
 
 @dataclass(kw_only=True)
 class UR5eConfig(common.RobotConfig):
-    lookahead_time: float = 0.05
-    gain: float = 500.0
+    # Robot movement parameters
     max_velocity: float = 1.0
     max_acceleration: float = 1.0
     async_control: bool = True
     max_servo_joint_step: float = 0.15
     max_servo_cartesian_step: float = 0.01
+
+    # UR Controller parameters, change with caution
+    lookahead_time: float = 0.05
+    gain: float = 500.0
 
     def __post_init__(self):
         super().__init__()
@@ -32,24 +43,23 @@ class UR5eState(common.RobotState):
         super().__init__()
 
 
-# Define the shared memory size and name outside the class
+# Define the shared memory
 SHM_SIZE = 4 + 1 + 48 + 48 + 48 + 48
 SHM_NAME = "ur5e_control_shm"
 
-NO_MODE = 0
-JOINT_MODE = 1
-CARTESIAN_MODE = 2
+class ControlMode(IntEnum):
+    IDLE = 0
+    JOINT_MODE = 1
+    CARTESIAN_MODE = 2
 
 
 def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: mp.Queue) -> None:
     """
     Control loop for the robot, running in a separate process.
-    This function is a helper and not part of the class.
     """
     robot_config = UR5eConfig()
     try:
         # Initialize robot interfaces
-        # TODO(j.hechtl): this is currently blocking if connection fails
         ur_control = rtde_control.RTDEControlInterface(ip)
         ur_receive = rtde_receive.RTDEReceiveInterface(ip)
 
@@ -57,19 +67,15 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
             msg = f"Could not connect to UR5e at {ip}."
             raise ConnectionError(msg)
 
-        # Attach to the shared memory segment
+        # Setup Shared Memory
         shm = SharedMemory(name=shm_name)
         data_buffer = shm.buf
-
-        # Define offsets for each field in the shared memory buffer
         offset_mode = 0
         offset_target_reached = offset_mode + 4
         offset_joint_target = offset_target_reached + 1
         offset_cartesian_target = offset_joint_target + 48
         offset_joint_state = offset_cartesian_target + 48
         offset_cartesian_state = offset_joint_state + 48
-
-        # Create numpy views on the shared memory buffer
         joint_target_view = np.ndarray((6,), dtype=np.float64, buffer=data_buffer, offset=offset_joint_target)
         cartesian_target_view = np.ndarray((6,), dtype=np.float64, buffer=data_buffer, offset=offset_cartesian_target)
         joint_state_view = np.ndarray((6,), dtype=np.float64, buffer=data_buffer, offset=offset_joint_state)
@@ -91,7 +97,7 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
             cartesian_state = np.array(ur_receive.getActualTCPPose())
             cartesian_state_view[:] = cartesian_state
 
-            if mode == JOINT_MODE:
+            if mode == ControlMode.JOINT_MODE:
                 diff = joint_target_view - joint_state_view
                 if np.max(np.abs(diff)) < 0.01:
                     data_buffer[offset_target_reached] = 1
@@ -102,25 +108,6 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
                 else:
                     target_q = joint_target_view.tolist()
 
-                # current_qd = ur_receive.getActualQd()
-                # required_qd = diff / dt
-                # required_qdd = (required_qd - current_qd) / dt
-
-                # max_qdd = [1,1,1,1,1,1]
-
-                # factor = 1
-
-                # for i in range(len(max_qdd)):
-                #     if np.abs(required_qdd[i])*factor > max_qdd[i]:
-                #         factor = factor * (max_qdd[i]/np.abs(required_qdd))
-                # assert factor <= 1
-                # if factor < 1:
-                #     target_qdd = factor * required_qdd
-                #     target_qd = current_qd + 0.5 * dt *target_qdd # average velocity in time window
-                #     new_target_q = joint_state + target_qd * dt
-                #     print("Current q: ", joint_state, " Target q: ", target_q, " New: ", new_target_q)
-
-                # print("Servo")
                 ur_control.servoJ(
                     target_q,
                     robot_config.max_velocity,
@@ -130,7 +117,7 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
                     robot_config.gain,
                 )
 
-            elif mode == CARTESIAN_MODE:
+            elif mode == ControlMode.CARTESIAN_MODE:
                 rotvec = common.RotVec(np.array(cartesian_target_view[3:6]))
                 # print("Target View: ", cartesian_target_view)
                 a = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_target_view[:3])
@@ -190,15 +177,12 @@ class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but 
         self._shm_buffer = self._shm.buf
         self._stop_queue = mp.Queue()
         self._config_queue = mp.Queue()
-
-        # Define numpy views on the shared memory buffer
         self._offset_mode = 0
         self._offset_target_reached = self._offset_mode + 4
         self._offset_joint_target = self._offset_target_reached + 1
         self._offset_cartesian_target = self._offset_joint_target + 48
         self._offset_joint_state = self._offset_cartesian_target + 48
         self._offset_cartesian_state = self._offset_joint_state + 48
-
         self._joint_target_shm = np.ndarray(
             (6,), dtype=np.float64, buffer=self._shm_buffer, offset=self._offset_joint_target
         )
@@ -212,7 +196,7 @@ class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but 
             (6,), dtype=np.float64, buffer=self._shm_buffer, offset=self._offset_cartesian_state
         )
 
-        # Initialise with -10 to check
+        # Initialise with -10 to check for first value
         self._joint_state_shm[:] = -10
 
         # Start the robot control process
@@ -222,7 +206,6 @@ class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but 
         self._robot_process.daemon = True  # Kills process if main process exits
         self._robot_process.start()
 
-        # Check for first update
         while self._joint_state_shm[0] == -10:
             print("Waiting for first robot state to arrive..")
             time.sleep(1)
@@ -251,18 +234,17 @@ class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but 
         return common.Pose(rpy_vector=[0, 0, np.deg2rad(180)], translation=[0, 0, 0]).inverse() * pose
 
     def get_ik(self) -> common.IK | None:
-
         return None
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]:
         return np.array(self._joint_state_shm)
 
-    def get_parameters(self) -> UR5eConfig:
+    def get_config(self) -> UR5eConfig:
         return self._config
 
-    def set_parameters(self, robot_cfg: UR5eConfig) -> None:
+    def set_config(self, robot_cfg: UR5eConfig) -> None:
         self._config = robot_cfg
-        # self._config_queue.put(robot_cfg)
+        # self._config_queue.put(robot_cfg) #TODO(j.hechtl): uncomment this
 
     def get_state(self) -> UR5eState:
         return UR5eState
@@ -273,11 +255,11 @@ class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but 
             print("IK failed")
             return
         self.set_joint_position(q)
-        return
+        return # TODO(j.hechtl)
         self._shm_buffer[self._offset_target_reached] = 0
         target_pose = (common.Pose(rpy_vector=[0, 0, np.deg2rad(180)], translation=[0, 0, 0]) * pose).rotvec()
         self._cartesian_target_shm[:] = target_pose
-        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (CARTESIAN_MODE).to_bytes(4, "little")
+        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (ControlMode.CARTESIAN_MODE).to_bytes(4, "little")
         if not self._config.async_control:
             while not self._shm_buffer[self._offset_target_reached]:
                 time.sleep(0.01)
@@ -285,7 +267,7 @@ class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]) -> None:
         self._shm_buffer[self._offset_target_reached] = 0
         self._joint_target_shm[:] = q
-        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (JOINT_MODE).to_bytes(4, "little")
+        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (ControlMode.JOINT_MODE).to_bytes(4, "little")
         if not self._config.async_control:
             while not self._shm_buffer[self._offset_target_reached]:
                 time.sleep(0.01)
@@ -300,7 +282,7 @@ class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but 
             raise ValueError(msg)
         print(f"Moving to home position: {home}")
         self._joint_target_shm[:] = home
-        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (JOINT_MODE).to_bytes(4, "little")
+        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (ControlMode.JOINT_MODE).to_bytes(4, "little")
         while not self._shm_buffer[self._offset_target_reached]:
             time.sleep(0.01)
 

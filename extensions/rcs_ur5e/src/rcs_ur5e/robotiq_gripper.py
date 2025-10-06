@@ -1,4 +1,5 @@
-"""Module to control Robotiq's grippers - tested with HAND-E"""
+"""Module to control Robotiq's grippers - tested with HAND-E
+Source: https://sdurobotics.gitlab.io/ur_rtde/_static/robotiq_gripper.py"""
 
 import socket
 import threading

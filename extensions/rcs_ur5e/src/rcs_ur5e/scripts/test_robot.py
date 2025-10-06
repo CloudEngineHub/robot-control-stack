@@ -1,14 +1,14 @@
+"""Script for testing UR5e robot connection and basic movements."""
+
 import time
-
 from rcs_ur5e.hw import UR5e
-
 
 ROBOT_IP = "192.168.25.201"
 
 robot = UR5e(ROBOT_IP)
 print(f"Robot joint positions: {robot.get_joint_position()}")
 print(f"Robot cartesian position: {robot.get_cartesian_position()}")
-print(f"Robot Parameters: {robot.get_parameters()}")
+print(f"Robot Config: {robot.get_config()}")
 print(f"Robot State: {robot.get_state()}")
 
 print("Moving to home position...")
