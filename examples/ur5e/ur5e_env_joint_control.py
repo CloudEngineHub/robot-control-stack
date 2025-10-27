@@ -1,4 +1,5 @@
 import logging
+from time import sleep
 
 import numpy as np
 from rcs._core.common import RobotPlatform
@@ -14,7 +15,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 ROBOT_IP = "192.168.25.201"
-ROBOT_INSTANCE = RobotPlatform.HARDWARE
+ROBOT_INSTANCE = RobotPlatform.SIMULATION  
+# ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 
 def main():
@@ -44,18 +46,15 @@ def main():
         robot_cfg.robot_type = rcs.common.RobotType.UR5e
         robot_cfg.attachment_site = "attachment_site"
         robot_cfg.arm_collision_geoms = []
+        robot_cfg.mjcf_scene_path = rcs.scenes["ur5e_empty_world"].mjb
+        robot_cfg.kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
         env_rel = SimEnvCreator()(
             control_mode=ControlMode.JOINTS,
             collision_guard=False,
             robot_cfg=robot_cfg,
             gripper_cfg=None,
-            # cameras=default_mujoco_cameraset_cfg(),
             max_relative_movement=np.deg2rad(5),
             relative_to=RelativeTo.LAST_STEP,
-            # mjcf=rcs.scenes["ur5e_empty_world"]["mjb"],
-            mjcf="/home/johannes/repos/learning/robot-control-stack/assets/scenes/ur5e_empty_world/scene.xml",
-            # urdf_path=rcs.scenes["ur5e_empty_world"]["urdf"],
-            urdf_path="/home/johannes/repos/learning/robot-control-stack/assets/ur5e/urdf/ur5e.urdf",
         )
         env_rel.get_wrapper_attr("sim").open_gui()
 
@@ -68,6 +67,7 @@ def main():
             if truncated or terminated:
                 logger.info("Truncated or terminated!")
                 return
+            sleep(0.4)
 
 
 if __name__ == "__main__":

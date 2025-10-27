@@ -12,6 +12,7 @@ import numpy as np
 import rtde_control
 import rtde_receive
 
+import rcs
 from rcs_ur5e import robotiq_gripper
 from rcs import common
 
@@ -22,6 +23,10 @@ from enum import IntEnum
 
 @dataclass(kw_only=True)
 class UR5eConfig(common.RobotConfig):
+    # Kinematics Setup
+    kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
+    attachment_site = "attachment_site_testo"
+
     # Robot movement parameters
     max_velocity: float = 1.0
     max_acceleration: float = 1.0
@@ -139,7 +144,7 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
                 # if np.max(np.abs(diff[0:3])) > robot_config.max_servo_cartesian_step:
                 #     diff = (robot_config.max_servo_cartesian_step / np.max(diff)) * diff
                 #     target_pose = (cartesian_state_view + diff).tolist()
-                # else:
+                # else: (j.hechtl)
                 # target_pose = cartesian_target_view.tolist()
                 ur_control.servoL(
                     target_pose,
@@ -166,8 +171,8 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 
 
 class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but currently there is a bug that needs to be fixed
-    def __init__(self, ip: str):
-        self.ik = common.RL(urdf_path="/home/johannes/repos/rcs/assets/ur5e/urdf/ur5e.urdf")
+    def __init__(self, ip: str, ik: common.Kinematics):
+        self.ik = ik
         self._config = UR5eConfig()
         self._config.robot_type = common.RobotType.UR5e
         self._ip = ip
@@ -233,7 +238,7 @@ class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but 
         pose = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=trans)
         return common.Pose(rpy_vector=[0, 0, np.deg2rad(180)], translation=[0, 0, 0]).inverse() * pose
 
-    def get_ik(self) -> common.IK | None:
+    def get_ik(self) -> common.Kinematics | None:
         return None
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]:
@@ -311,8 +316,6 @@ class RobotiQGripper:  # (common.Gripper):
         Close the gripper to grasp an object.
         """
         self.set_normalized_width(0.0)
-
-    # def is_grasped(self) -> bool: ...
 
     def open(self) -> None:
         """

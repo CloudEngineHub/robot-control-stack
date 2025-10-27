@@ -1,6 +1,7 @@
 import logging
 
 import gymnasium as gym
+import rcs
 from rcs.camera.hw import HardwareCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
@@ -27,7 +28,12 @@ class RCSUR5eEnvCreator(RCSHardwareEnvCreator):
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
     ) -> gym.Env:
-        robot = UR5e(ip)
+        ik = rcs.common.Pin(
+            robot_cfg.kinematic_model_path,
+            robot_cfg.attachment_site,
+            urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+        )
+        robot = UR5e(ip, ik)
         robot.set_config(robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode, home_on_reset=True)
 

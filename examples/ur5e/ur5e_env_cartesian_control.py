@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 ROBOT_IP = "192.168.1.15"
-ROBOT_INSTANCE = RobotPlatform.HARDWARE
+ROBOT_INSTANCE = RobotPlatform.SIMULATION  # Change to RobotPlatform.HARDWARE for real robot
 
 
 def main():
@@ -46,28 +46,27 @@ def main():
         robot_cfg.robot_type = rcs.common.RobotType.UR5e
         robot_cfg.attachment_site = "attachment_site"
         robot_cfg.arm_collision_geoms = []
+        robot_cfg.mjcf_scene_path = rcs.scenes["ur5e_empty_world"].mjb
+        robot_cfg.kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
         env_rel = SimEnvCreator()(
-            control_mode=ControlMode.CARTESIAN_TQuat,
+            control_mode=ControlMode.CARTESIAN_TRPY,
             collision_guard=False,
             robot_cfg=robot_cfg,
             gripper_cfg=None,
-            # cameras=default_mujoco_cameraset_cfg(),
             max_relative_movement=0.5,
             relative_to=RelativeTo.LAST_STEP,
-            mjcf=rcs.scenes["ur5e_empty_world"].mjb,
-            urdf_path=rcs.scenes["ur5e_empty_world"].urdf,
         )
         env_rel.get_wrapper_attr("sim").open_gui()
 
     obs, info = env_rel.reset()
 
-    act = {"xyzrpy": [0.0, 0, 0.0, 0, 0, np.deg2rad(45)], "gripper": 0}
-    obs, reward, terminated, truncated, info = env_rel.step(act)
+    # act = {"xyzrpy": [0.0, 0, 0.0, 0, 0, np.deg2rad(45)], "gripper": 0}
+    # obs, reward, terminated, truncated, info = env_rel.step(act)
 
     for _ in range(100):
         for _ in range(10):
             # move 1cm in x direction (forward) and close gripper
-            act = {"tquat": [0.01, 0, 0, 0.0087265, 0, 0, 0.9999619], "gripper": 0}
+            act = {"xyzrpy": [-0.1, 0, 0, 0.0, 0, 0], "gripper": 0}
             obs, reward, terminated, truncated, info = env_rel.step(act)
             if truncated or terminated:
                 logger.info("Truncated or terminated!")
@@ -75,7 +74,7 @@ def main():
             sleep(0.1)
         for _ in range(10):
             # move 1cm in negative x direction (backward) and open gripper
-            act = {"tquat": [-0.01, 0, 0, -0.0087265, 0, 0, 0.9999619], "gripper": 1}
+            act = {"xyzrpy": [-0.01, 0, 0, -0.0087265, 0, 0, 0.9999619], "gripper": 1}
             obs, reward, terminated, truncated, info = env_rel.step(act)
             if truncated or terminated:
                 logger.info("Truncated or terminated!")
