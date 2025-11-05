@@ -37,7 +37,7 @@ class RCSUR5eEnvCreator(RCSHardwareEnvCreator):
         robot.set_config(robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode, home_on_reset=True)
 
-        gripper = RobotiQGripper(ip) #TODO(j.hechtl): add robotiq sim gripper
+        gripper = RobotiQGripper(ip)
         env = GripperWrapper(env, gripper, binary=True)
 
         if camera_set is not None:

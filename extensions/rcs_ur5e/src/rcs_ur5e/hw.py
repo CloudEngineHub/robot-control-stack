@@ -124,28 +124,18 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 
             elif mode == ControlMode.CARTESIAN_MODE:
                 rotvec = common.RotVec(np.array(cartesian_target_view[3:6]))
-                # print("Target View: ", cartesian_target_view)
-                a = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_target_view[:3])
-                # print(a)
+                a = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_target_view[:3])                
                 rotvec = common.RotVec(np.array(cartesian_state_view[3:6]))
                 b = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_state_view[:3])
-                # print(b)
                 diff = b * a.inverse()
-                # print(diff)
                 diff.limit_rotation_angle(np.deg2rad(0.01)).limit_translation_length(0.008)
                 target = a * diff
-                # print("Target: ",target)
                 target_pose = target.rotvec()
 
                 diff = cartesian_target_view - cartesian_state_view
                 if np.max(np.abs(diff)) < 0.0025:
                     data_buffer[offset_target_reached] = 1
 
-                # if np.max(np.abs(diff[0:3])) > robot_config.max_servo_cartesian_step:
-                #     diff = (robot_config.max_servo_cartesian_step / np.max(diff)) * diff
-                #     target_pose = (cartesian_state_view + diff).tolist()
-                # else: (j.hechtl)
-                # target_pose = cartesian_target_view.tolist()
                 ur_control.servoL(
                     target_pose,
                     robot_config.max_velocity,
@@ -249,7 +239,7 @@ class UR5e(common.Robot):
 
     def set_config(self, robot_cfg: UR5eConfig) -> None:
         self._config = robot_cfg
-        # self._config_queue.put(robot_cfg) #TODO(j.hechtl): uncomment this
+        self._config_queue.put(robot_cfg)
 
     def get_state(self) -> UR5eState:
         return UR5eState
@@ -260,14 +250,7 @@ class UR5e(common.Robot):
             print("IK failed")
             return
         self.set_joint_position(q)
-        return # TODO(j.hechtl)
-        self._shm_buffer[self._offset_target_reached] = 0
-        target_pose = (common.Pose(rpy_vector=[0, 0, np.deg2rad(180)], translation=[0, 0, 0]) * pose).rotvec()
-        self._cartesian_target_shm[:] = target_pose
-        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (ControlMode.CARTESIAN_MODE).to_bytes(4, "little")
-        if not self._config.async_control:
-            while not self._shm_buffer[self._offset_target_reached]:
-                time.sleep(0.01)
+        return
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]) -> None:
         self._shm_buffer[self._offset_target_reached] = 0
@@ -295,7 +278,7 @@ class UR5e(common.Robot):
         pass
 
 
-class RobotiQGripper:  # (common.Gripper):
+class RobotiQGripper(common.Gripper):
     def __init__(self, ip):
         self.gripper = robotiq_gripper.RobotiqGripper()
         try:

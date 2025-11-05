@@ -42,31 +42,36 @@ def main():
             "wrist_2_joint",
             "wrist_3_joint",
         ]
-        robot_cfg.base = "base"
         robot_cfg.robot_type = rcs.common.RobotType.UR5e
         robot_cfg.attachment_site = "attachment_site"
         robot_cfg.arm_collision_geoms = []
         robot_cfg.mjcf_scene_path = rcs.scenes["ur5e_empty_world"].mjb
         robot_cfg.kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
+        robot_cfg.base = "base"
+
+        gripper_config = sim.SimGripperConfig()
+        gripper_config.actuator = "fingers_actuator"
+        gripper_config.joint = "right_driver_joint"
+        gripper_config.collision_geoms = []
+        gripper_config.collision_geoms_fingers = []
+
         env_rel = SimEnvCreator()(
-            control_mode=ControlMode.CARTESIAN_TRPY,
+            control_mode=ControlMode.CARTESIAN_TQuat,
             collision_guard=False,
             robot_cfg=robot_cfg,
-            gripper_cfg=None,
-            max_relative_movement=0.5,
+            gripper_cfg=gripper_config,
+            max_relative_movement=(0.1,np.deg2rad(5)),
             relative_to=RelativeTo.LAST_STEP,
         )
         env_rel.get_wrapper_attr("sim").open_gui()
 
     obs, info = env_rel.reset()
 
-    # act = {"xyzrpy": [0.0, 0, 0.0, 0, 0, np.deg2rad(45)], "gripper": 0}
-    # obs, reward, terminated, truncated, info = env_rel.step(act)
-
     for _ in range(100):
         for _ in range(10):
             # move 1cm in x direction (forward) and close gripper
-            act = {"xyzrpy": [-0.1, 0, 0, 0.0, 0, 0], "gripper": 0}
+            act = {"xyzrpy": [0, 0, 0, 0.0, 0, 0], "gripper": 0}
+            act = env_rel.action_space.sample()
             obs, reward, terminated, truncated, info = env_rel.step(act)
             if truncated or terminated:
                 logger.info("Truncated or terminated!")

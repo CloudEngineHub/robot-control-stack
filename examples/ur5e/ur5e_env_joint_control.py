@@ -42,17 +42,24 @@ def main():
             "wrist_2_joint",
             "wrist_3_joint",
         ]
-        robot_cfg.base = "base"
         robot_cfg.robot_type = rcs.common.RobotType.UR5e
         robot_cfg.attachment_site = "attachment_site"
         robot_cfg.arm_collision_geoms = []
         robot_cfg.mjcf_scene_path = rcs.scenes["ur5e_empty_world"].mjb
         robot_cfg.kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
+        robot_cfg.base = "base"
+
+        gripper_config = sim.SimGripperConfig()
+        gripper_config.actuator = "fingers_actuator"
+        gripper_config.joint = "right_driver_joint"
+        gripper_config.collision_geoms = []
+        gripper_config.collision_geoms_fingers = []
+
         env_rel = SimEnvCreator()(
             control_mode=ControlMode.JOINTS,
             collision_guard=False,
             robot_cfg=robot_cfg,
-            gripper_cfg=None,
+            gripper_cfg=gripper_config,
             max_relative_movement=np.deg2rad(5),
             relative_to=RelativeTo.LAST_STEP,
         )
