@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 ROBOT_IP = "192.168.25.201"
-ROBOT_INSTANCE = RobotPlatform.SIMULATION  
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
 # ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 

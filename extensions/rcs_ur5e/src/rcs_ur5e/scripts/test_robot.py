@@ -1,6 +1,7 @@
 """Script for testing UR5e robot connection and basic movements."""
 
 import time
+
 from rcs_ur5e.hw import UR5e
 
 ROBOT_IP = "192.168.25.201"

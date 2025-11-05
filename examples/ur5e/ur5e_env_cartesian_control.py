@@ -5,7 +5,6 @@ import numpy as np
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-
 from rcs_ur5e.creators import RCSUR5eEnvCreator
 from rcs_ur5e.hw import UR5eConfig
 
@@ -60,7 +59,7 @@ def main():
             collision_guard=False,
             robot_cfg=robot_cfg,
             gripper_cfg=gripper_config,
-            max_relative_movement=(0.1,np.deg2rad(5)),
+            max_relative_movement=(0.1, np.deg2rad(5)),
             relative_to=RelativeTo.LAST_STEP,
         )
         env_rel.get_wrapper_attr("sim").open_gui()

@@ -1,7 +1,6 @@
 import logging
 
 import gymnasium as gym
-import rcs
 from rcs.camera.hw import HardwareCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
@@ -13,6 +12,8 @@ from rcs.envs.base import (
 )
 from rcs.envs.creators import RCSHardwareEnvCreator
 from rcs_ur5e.hw import RobotiQGripper, UR5e, UR5eConfig
+
+import rcs
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

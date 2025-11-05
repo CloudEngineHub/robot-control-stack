@@ -78,7 +78,7 @@ scenes: dict[str, Scene] = {
         mjcf_robot=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "ur5e_empty_world", "robot.xml"),
         urdf=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "ur5e_empty_world", "robot.urdf"),
         robot_type=common.RobotType.UR5e,
-    )
+    ),
 }
 
 # make submodules available

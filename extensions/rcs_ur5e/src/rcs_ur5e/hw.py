@@ -6,19 +6,16 @@ import multiprocessing as mp
 import time
 import typing
 from dataclasses import dataclass
+from enum import IntEnum
 from multiprocessing.shared_memory import SharedMemory
-import numpy as np
 
+import numpy as np
 import rtde_control
 import rtde_receive
+from rcs_ur5e import robotiq_gripper
 
 import rcs
-from rcs_ur5e import robotiq_gripper
 from rcs import common
-
-from enum import IntEnum
-
-
 
 
 @dataclass(kw_only=True)
@@ -51,6 +48,7 @@ class UR5eState(common.RobotState):
 # Define the shared memory
 SHM_SIZE = 4 + 1 + 48 + 48 + 48 + 48
 SHM_NAME = "ur5e_control_shm"
+
 
 class ControlMode(IntEnum):
     IDLE = 0
@@ -124,7 +122,7 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 
             elif mode == ControlMode.CARTESIAN_MODE:
                 rotvec = common.RotVec(np.array(cartesian_target_view[3:6]))
-                a = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_target_view[:3])                
+                a = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_target_view[:3])
                 rotvec = common.RotVec(np.array(cartesian_state_view[3:6]))
                 b = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_state_view[:3])
                 diff = b * a.inverse()
@@ -255,7 +253,9 @@ class UR5e(common.Robot):
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]) -> None:
         self._shm_buffer[self._offset_target_reached] = 0
         self._joint_target_shm[:] = q
-        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (ControlMode.JOINT_MODE).to_bytes(4, "little")
+        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (ControlMode.JOINT_MODE).to_bytes(
+            4, "little"
+        )
         if not self._config.async_control:
             while not self._shm_buffer[self._offset_target_reached]:
                 time.sleep(0.01)
@@ -270,7 +270,9 @@ class UR5e(common.Robot):
             raise ValueError(msg)
         print(f"Moving to home position: {home}")
         self._joint_target_shm[:] = home
-        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (ControlMode.JOINT_MODE).to_bytes(4, "little")
+        self._shm_buffer[self._offset_mode : self._offset_target_reached] = (ControlMode.JOINT_MODE).to_bytes(
+            4, "little"
+        )
         while not self._shm_buffer[self._offset_target_reached]:
             time.sleep(0.01)
 
