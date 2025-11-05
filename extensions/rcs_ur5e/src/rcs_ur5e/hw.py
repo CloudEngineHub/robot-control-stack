@@ -170,7 +170,7 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
             shm.close()
 
 
-class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but currently there is a bug that needs to be fixed
+class UR5e(common.Robot):
     def __init__(self, ip: str, ik: common.Kinematics):
         self.ik = ik
         self._config = UR5eConfig()
