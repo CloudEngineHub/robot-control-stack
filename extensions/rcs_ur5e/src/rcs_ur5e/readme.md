@@ -17,46 +17,12 @@ pip install -ve rcs_ur5e
 ```
 
 ## Usage
-```python
-import numpy as np
-from rcs.envs.base import ControlMode, RelativeTo
-from rcs_ur5e.creators import RCSUR5eEnvCreator
-from rcs_ur5e.hw import UR5eConfig
+You can initially test the connection to the robot and basic movements by running the scripts in the [scripts](./scripts/) folder.
 
-ROBOT_IP = "192.168.1.15"
-robot_cfg = UR5eConfig()
-robot_cfg.async_control = False
+For code examples see the [examples](../../../../examples/ur5e) folder.
 
-env_rel = RCSUR5eEnvCreator()(
-    robot_cfg=robot_cfg,
-    control_mode=ControlMode.CARTESIAN_TRPY,
-    ip=ROBOT_IP,
-    camera_set=None,
-    max_relative_movement=0.2,
-    relative_to=RelativeTo.LAST_STEP,
-)
-
-obs, info = env_rel.reset()
-
-act = {"xyzrpy": [0.0, 0, 0.0, 0, 0, np.deg2rad(45)], "gripper": 0}
-obs, reward, terminated, truncated, info = env_rel.step(act)
-```
-
-For more examples see the [examples](../../examples/) folder.
-You can switch to hardware by setting the following flag:
+You can switch between hardware and simulation by setting the following flag:
 ```python
 ROBOT_INSTANCE = RobotPlatform.HARDWARE
 # ROBOT_INSTANCE = RobotPlatform.SIMULATION
 ```
-
-You can initially test the connection to the robot and basic movements by running the scripts in the `scripts` folder.
-
-
-
-
-TODO(j.hechtl):
-- test usage script
-- test examples 
-- add usage section to documentation page
-- make ready for tools repo merge
-- simulation gripper?
