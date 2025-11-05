@@ -85,6 +85,9 @@ class RobotiqGripper:
         cmd += "\n"  # new line is required for the command to finish
         # atomic commands send/rcv
         with self.command_lock:
+            if self.socket is None:
+                print("Error: Socket is not connected.")
+                return False
             self.socket.sendall(cmd.encode(self.ENCODING))
             data = self.socket.recv(1024)
         return self._is_ack(data)
@@ -106,6 +109,9 @@ class RobotiqGripper:
         """
         # atomic commands send/rcv
         with self.command_lock:
+            if self.socket is None:
+                print("Error: Socket is not connected.")
+                return False
             cmd = f"GET {variable}\n"
             self.socket.sendall(cmd.encode(self.ENCODING))
             data = self.socket.recv(1024)

@@ -8,6 +8,7 @@ import typing
 from dataclasses import dataclass
 from enum import IntEnum
 from multiprocessing.shared_memory import SharedMemory
+from typing import Any
 
 import numpy as np
 import rtde_control
@@ -159,6 +160,9 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 
 
 class UR5e(common.Robot):
+    _stop_queue: mp.Queue[Any]
+    _config_queue: mp.Queue[Any]
+
     def __init__(self, ip: str, ik: common.Kinematics):
         self.ik = ik
         self._config = UR5eConfig()
@@ -224,12 +228,14 @@ class UR5e(common.Robot):
         trans = ur_pose[0:3]
         rotvec = common.RotVec(np.array(ur_pose[3:6]))
         pose = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=trans)
-        return common.Pose(rpy_vector=[0, 0, np.deg2rad(180)], translation=[0, 0, 0]).inverse() * pose
+        return (
+            common.Pose(rpy_vector=np.array([0, 0, np.deg2rad(180)]), translation=np.array([0, 0, 0])).inverse() * pose
+        )
 
     def get_ik(self) -> common.Kinematics | None:
-        return None
+        return self.ik
 
-    def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]:
+    def get_joint_position(self) -> np.ndarray[tuple[typing.Any], np.dtype[np.float64]]:
         return np.array(self._joint_state_shm)
 
     def get_config(self) -> UR5eConfig:
@@ -239,18 +245,18 @@ class UR5e(common.Robot):
         self._config = robot_cfg
         self._config_queue.put(robot_cfg)
 
-    def get_state(self) -> UR5eState:
-        return UR5eState
+    def get_state(self) -> common.RobotState:
+        return UR5eState()
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
-        q = self.ik.ik(pose, self.get_joint_position())
+        q = self.ik.inverse(pose, self.get_joint_position())
         if q is None:
             print("IK failed")
             return
         self.set_joint_position(q)
         return
 
-    def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]) -> None:
+    def set_joint_position(self, q: np.ndarray[tuple[typing.Any], np.dtype[np.float64]]) -> None:
         self._shm_buffer[self._offset_target_reached] = 0
         self._joint_target_shm[:] = q
         self._shm_buffer[self._offset_mode : self._offset_target_reached] = (ControlMode.JOINT_MODE).to_bytes(

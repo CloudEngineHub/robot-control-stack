@@ -31,9 +31,9 @@ def main():
             relative_to=RelativeTo.LAST_STEP,
         )
     else:
-        robot_cfg = sim.SimRobotConfig()
-        robot_cfg.actuators = ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
-        robot_cfg.joints = [
+        robot_sim_cfg = sim.SimRobotConfig()
+        robot_sim_cfg.actuators = ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
+        robot_sim_cfg.joints = [
             "shoulder_pan_joint",
             "shoulder_lift_joint",
             "elbow_joint",
@@ -41,12 +41,12 @@ def main():
             "wrist_2_joint",
             "wrist_3_joint",
         ]
-        robot_cfg.robot_type = rcs.common.RobotType.UR5e
-        robot_cfg.attachment_site = "attachment_site"
-        robot_cfg.arm_collision_geoms = []
-        robot_cfg.mjcf_scene_path = rcs.scenes["ur5e_empty_world"].mjb
-        robot_cfg.kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
-        robot_cfg.base = "base"
+        robot_sim_cfg.robot_type = rcs.common.RobotType.UR5e
+        robot_sim_cfg.attachment_site = "attachment_site"
+        robot_sim_cfg.arm_collision_geoms = []
+        robot_sim_cfg.mjcf_scene_path = rcs.scenes["ur5e_empty_world"].mjb
+        robot_sim_cfg.kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
+        robot_sim_cfg.base = "base"
 
         gripper_config = sim.SimGripperConfig()
         gripper_config.actuator = "fingers_actuator"
@@ -57,7 +57,7 @@ def main():
         env_rel = SimEnvCreator()(
             control_mode=ControlMode.CARTESIAN_TQuat,
             collision_guard=False,
-            robot_cfg=robot_cfg,
+            robot_cfg=robot_sim_cfg,
             gripper_cfg=gripper_config,
             max_relative_movement=(0.1, np.deg2rad(5)),
             relative_to=RelativeTo.LAST_STEP,
