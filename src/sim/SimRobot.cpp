@@ -191,11 +191,15 @@ bool SimRobot::convergence_callback() {
 }
 
 void SimRobot::m_reset() {
-  this->set_joints_hard(
-      common::robots_meta_config.at(this->cfg.robot_type).q_home);
+  auto q = common::robots_meta_config.at(this->cfg.robot_type).q_home;
+  // this->set_joints_hard(q);
+  this->set_joint_position(q);
 }
 
 void SimRobot::set_joints_hard(const common::VectorXd& q) {
+  // TODO does not work for some reason
+  this->state.target_angles = q;
+  this->state.previous_angles = this->get_joint_position();
   for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
     size_t jnt_id = this->ids.joints[i];
     size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
