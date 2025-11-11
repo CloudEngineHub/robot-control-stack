@@ -10,19 +10,16 @@ class LinearPoseTrajInterpolator {
   Eigen::Vector3d p_start_;
   Eigen::Vector3d p_goal_;
   Eigen::Vector3d last_p_t_;
-  Eigen::Vector3d prev_p_goal_;
 
   Eigen::Quaterniond q_start_;
   Eigen::Quaterniond q_goal_;
   Eigen::Quaterniond last_q_t_;
-  Eigen::Quaterniond prev_q_goal_;
 
   double dt_;
   double last_time_;
   double max_time_;
   double start_time_;
   bool start_;
-  bool first_goal_;
 
  public:
   inline LinearPoseTrajInterpolator()
@@ -30,8 +27,7 @@ class LinearPoseTrajInterpolator {
         last_time_(0.),
         max_time_(1.),
         start_time_(0.),
-        start_(false),
-        first_goal_(true){};
+        start_(false){};
 
   inline ~LinearPoseTrajInterpolator(){};
 
@@ -49,22 +45,8 @@ class LinearPoseTrajInterpolator {
 
     start_ = false;
 
-    if (first_goal_) {
-      p_start_ = p_start;
-      q_start_ = q_start;
-
-      prev_p_goal_ = p_start;
-      prev_q_goal_ = q_start;
-      first_goal_ = false;
-    } else {
-      // If the goal is already set, use prev goal as the starting point of
-      // interpolation.
-      prev_p_goal_ = p_goal_;
-      prev_q_goal_ = q_goal_;
-
-      p_start_ = prev_p_goal_;
-      q_start_ = prev_q_goal_;
-    }
+    p_start_ = p_start;
+    q_start_ = q_start;
 
     p_goal_ = p_goal;
     q_goal_ = q_goal;
@@ -104,14 +86,12 @@ class LinearJointPositionTrajInterpolator {
   Vector7d q_goal_;
 
   Vector7d last_q_t_;
-  Vector7d prev_q_goal_;
 
   double dt_;
   double last_time_;
   double max_time_;
   double start_time_;
   bool start_;
-  bool first_goal_;
 
   double interpolation_fraction_;  // fraction of actual interpolation within an
                                    // interval
@@ -122,8 +102,7 @@ class LinearJointPositionTrajInterpolator {
         last_time_(0.),
         max_time_(1.),
         start_time_(0.),
-        start_(false),
-        first_goal_(true){};
+        start_(false){};
 
   inline ~LinearJointPositionTrajInterpolator(){};
 
@@ -141,15 +120,7 @@ class LinearJointPositionTrajInterpolator {
 
     start_ = false;
 
-    if (first_goal_) {
-      q_start_ = q_start;
-      prev_q_goal_ = q_start;
-      first_goal_ = false;
-      // std::cout << "First goal of the interpolation" << std::endl;
-    } else {
-      prev_q_goal_ = q_goal_;
-      q_start_ = prev_q_goal_;
-    }
+    q_start_ = q_start;
     q_goal_ = q_goal;
   };
 

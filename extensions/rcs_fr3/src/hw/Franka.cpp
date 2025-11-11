@@ -147,13 +147,14 @@ void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
   M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
 }
 
-void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
-                         double max_torque) {
+void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array,
+                         const std::array<double, 7> &min_torques,
+                         const std::array<double, 7> &max_torques) {
   for (size_t i = 0; i < tau_d_array.size(); i++) {
-    if (tau_d_array[i] < min_torque) {
-      tau_d_array[i] = min_torque;
-    } else if (tau_d_array[i] > max_torque) {
-      tau_d_array[i] = max_torque;
+    if (tau_d_array[i] < min_torques[i]) {
+      tau_d_array[i] = min_torques[i];
+    } else if (tau_d_array[i] > max_torques[i]) {
+      tau_d_array[i] = max_torques[i];
     }
   }
 }
@@ -419,18 +420,20 @@ void Franka::osc() {
     dist2joint_max = joint_max_.matrix() - q;
     dist2joint_min = q - joint_min_.matrix();
 
+    double activation_distance = 0.25;
     for (int i = 0; i < 7; i++) {
-      if (dist2joint_max[i] < 0.25 && dist2joint_max[i] > 0.1)
-        avoidance_force[i] += -avoidance_weights_[i] * dist2joint_max[i];
-      if (dist2joint_min[i] < 0.25 && dist2joint_min[i] > 0.1)
-        avoidance_force[i] += avoidance_weights_[i] * dist2joint_min[i];
+      if (dist2joint_max[i] < activation_distance) {
+        avoidance_force[i] +=
+            -avoidance_weights_[i] *
+            (1 / std::max(dist2joint_max[i], 0.001) - 1 / activation_distance);
+      }
+      if (dist2joint_min[i] < activation_distance) {
+        avoidance_force[i] +=
+            avoidance_weights_[i] *
+            (1 / std::max(dist2joint_min[i], 0.001) - 1 / activation_distance);
+      }
     }
     tau_d << tau_d + Nullspace * avoidance_force;
-    for (int i = 0; i < 7; i++) {
-      if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-      if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
-    }
-
     std::array<double, 7> tau_d_array{};
     Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
 
@@ -439,13 +442,15 @@ void Franka::osc() {
         std::chrono::high_resolution_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
+    // clamp the torques to a safe range.
+    std::array<double, 7> min_torques = {-10.0, -10.0, -10.0, -10.0,
+                                         -5.0,  -5.0,  -5.0};
+    std::array<double, 7> max_torques = {10.0, 10.0, 10.0, 10.0, 5.0, 5.0, 5.0};
+    TorqueSafetyGuardFn(tau_d_array, min_torques, max_torques);
+
+    // limit the rate of change of the clamped torques.
     std::array<double, 7> tau_d_rate_limited = franka::limitRate(
         franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
-
-    // deoxys/config/control_config.yml
-    double min_torque = -5;
-    double max_torque = 5;
-    TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
 
     return tau_d_rate_limited;
   });
@@ -514,16 +519,31 @@ void Franka::joint_controller() {
 
     tau_d << Kp.cwiseProduct(joint_pos_error) - Kd.cwiseProduct(dq);
 
+    // Add joint avoidance potential
+    Eigen::Array<double, 7, 1> avoidance_weights;
+    avoidance_weights << 1., 1., 1., 1., 1., 10., 10.;
+    Eigen::Matrix<double, 7, 1> avoidance_force;
+    avoidance_force.setZero();
     Eigen::Matrix<double, 7, 1> dist2joint_max;
     Eigen::Matrix<double, 7, 1> dist2joint_min;
 
     dist2joint_max = joint_max_.matrix() - q;
     dist2joint_min = q - joint_min_.matrix();
 
+    double activation_distance = 0.25;
     for (int i = 0; i < 7; i++) {
-      if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-      if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
+      if (dist2joint_max[i] < activation_distance) {
+        avoidance_force[i] +=
+            -avoidance_weights[i] *
+            (1 / std::max(dist2joint_max[i], 0.001) - 1 / activation_distance);
+      }
+      if (dist2joint_min[i] < activation_distance) {
+        avoidance_force[i] +=
+            avoidance_weights[i] *
+            (1 / std::max(dist2joint_min[i], 0.001) - 1 / activation_distance);
+      }
     }
+    tau_d << tau_d + avoidance_force;
 
     std::array<double, 7> tau_d_array{};
     Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
@@ -533,13 +553,16 @@ void Franka::joint_controller() {
         std::chrono::high_resolution_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
+    // deoxys/config/control_config.yml
+    // First clamp the torques to a safe range.
+    std::array<double, 7> min_torques = {-10.0, -10.0, -10.0, -10.0,
+                                         -5.0,  -5.0,  -5.0};
+    std::array<double, 7> max_torques = {10.0, 10.0, 10.0, 10.0, 5.0, 5.0, 5.0};
+    TorqueSafetyGuardFn(tau_d_array, min_torques, max_torques);
+
+    // Then limit the rate of change of the clamped torques.
     std::array<double, 7> tau_d_rate_limited = franka::limitRate(
         franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
-
-    // deoxys/config/control_config.yml
-    double min_torque = -5;
-    double max_torque = 5;
-    TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
 
     return tau_d_rate_limited;
   });
