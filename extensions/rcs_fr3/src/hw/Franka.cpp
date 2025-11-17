@@ -179,6 +179,14 @@ void Franka::controller_set_joint_position(const common::Vector7d &desired_q) {
     this->interpolator_mutex.lock();
   }
 
+  Eigen::Map<common::Vector7d> current_q(this->curr_state.q.data());
+  double max_joint_dist = (desired_q - current_q).cwiseAbs().maxCoeff();
+  double required_time = max_joint_dist / this->cfg.max_joint_velocity;
+  double min_time = 1.0 / static_cast<double>(policy_rate);
+  required_time = std::max(required_time, min_time);
+  traj_interpolation_time_fraction =
+      required_time * static_cast<double>(policy_rate);
+
   this->joint_interpolator.reset(
       this->controller_time,
       Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q,
@@ -214,6 +222,25 @@ void Franka::osc_set_cartesian_position(
   }
 
   common::Pose curr_pose(this->curr_state.O_T_EE);
+
+  double dist_pos =
+      (desired_pose_EE_in_base_frame.translation() - curr_pose.translation())
+          .norm();
+  double time_pos = dist_pos / this->cfg.max_cartesian_velocity;
+
+  Eigen::Quaterniond q_diff =
+      desired_pose_EE_in_base_frame.quaternion() * curr_pose.quaternion().inverse();
+  Eigen::AngleAxisd angle_axis(q_diff);
+  double dist_rot = angle_axis.angle();
+  double time_rot = dist_rot / this->cfg.max_cartesian_angular_velocity;
+
+  double required_time = std::max(time_pos, time_rot);
+  double min_time = 1.0 / static_cast<double>(policy_rate);
+  required_time = std::max(required_time, min_time);
+
+  traj_interpolation_time_fraction =
+      required_time * static_cast<double>(policy_rate);
+
   this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),

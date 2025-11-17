@@ -66,7 +66,13 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FrankaConfig::nominal_end_effector_frame)
       .def_readwrite("world_to_robot", &rcs::hw::FrankaConfig::world_to_robot)
-      .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control);
+      .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control)
+      .def_readwrite("max_cartesian_velocity",
+                     &rcs::hw::FrankaConfig::max_cartesian_velocity)
+      .def_readwrite("max_cartesian_angular_velocity",
+                     &rcs::hw::FrankaConfig::max_cartesian_angular_velocity)
+      .def_readwrite("max_joint_velocity",
+                     &rcs::hw::FrankaConfig::max_joint_velocity);
 
   py::class_<rcs::hw::FR3Config, rcs::hw::FrankaConfig>(hw, "FR3Config")
       .def(py::init<>());
