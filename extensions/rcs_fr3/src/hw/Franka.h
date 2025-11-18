@@ -2,6 +2,7 @@
 #define RCS_FRANKA_H
 
 #include <franka/robot.h>
+#include <ruckig/ruckig.hpp>
 
 #include <cmath>
 #include <memory>
@@ -29,7 +30,7 @@ struct FrankaLoad {
 enum IKSolver { franka_ik = 0, rcs_ik };
 // modes: joint-space control, operational-space control, zero-torque
 // control
-enum Controller { none = 0, jsc, osc, ztc };
+enum Controller { none = 0, jsc, osc, ztc, ruckig };
 struct FrankaConfig : common::RobotConfig {
   // TODO: max force and elbow?
   // TODO: we can either write specific bindings for each, or we use python
@@ -66,9 +67,13 @@ class Franka : public common::Robot {
   franka::RobotState curr_state;
   std::mutex interpolator_mutex;
   Controller running_controller = Controller::none;
+  std::unique_ptr<ruckig::Ruckig<6>> otg;
+  ruckig::InputParameter<6> ruckig_input;
+  ruckig::OutputParameter<6> ruckig_output;
   void osc();
   void joint_controller();
   void zero_torque_controller();
+  void ruckig_controller();
 
  public:
   Franka(const std::string &ip,
@@ -96,6 +101,7 @@ class Franka : public common::Robot {
   void controller_set_joint_position(const common::Vector7d &desired_q);
   void osc_set_cartesian_position(
       const common::Pose &desired_pose_EE_in_base_frame);
+  void ruckig_set_cartesian_waypoint(const common::Pose &desired_pose_EE_in_base_frame, double max_time);
   void zero_torque_guiding();
 
   void stop_control_thread();

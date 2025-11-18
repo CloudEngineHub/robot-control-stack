@@ -64,4 +64,13 @@ FetchContent_Declare(pybind11
 
 FetchContent_MakeAvailable(libfranka pybind11)
 
+# Disabling examples and python modules of ruckig
+set(BUILD_EXAMPLES_TMP ${BUILD_EXAMPLES})
+set(BUILD_EXAMPLES OFF)
+set(BUILD_PYTHON_MODULE_TMP ${BUILD_PYTHON_MODULE})
+set(BUILD_PYTHON_MODULE OFF)
+add_subdirectory(../../franky/ruckig)
+set(BUILD_EXAMPLES ${BUILD_EXAMPLES_TMP})
+set(BUILD_PYTHON_MODULE ${BUILD_PYTHON_MODULE_TMP})
+
 add_subdirectory(src)

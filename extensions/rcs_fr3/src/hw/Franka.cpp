@@ -30,6 +30,7 @@ Franka::Franka(const std::string &ip,
   if (cfg.has_value()) {
     this->cfg = cfg.value();
   }  // else default constructor
+  this->otg = std::make_unique<ruckig::Ruckig<6>>(0.001);
 }
 
 Franka::~Franka() {}
@@ -254,6 +255,90 @@ void Franka::osc_set_cartesian_position(
   } else {
     this->interpolator_mutex.unlock();
   }
+}
+
+void Franka::ruckig_set_cartesian_waypoint(const common::Pose &desired_pose_EE_in_base_frame, double max_time) {
+  if (this->running_controller == Controller::none) {
+    this->controller_time = 0.0;
+    this->get_cartesian_position();
+  } else if (this->running_controller != Controller::ruckig) {
+    throw std::runtime_error(
+        "Controller type must but ruckig but is " +
+        std::to_string(this->running_controller) +
+        ". To change controller type stop the current controller first.");
+  } else {
+    this->interpolator_mutex.lock();
+  }
+
+  common::Pose current_pose(this->curr_state.O_T_EE);
+  Eigen::AngleAxisd current_angle_axis(current_pose.quaternion());
+  Eigen::Vector3d current_axis = current_angle_axis.axis();
+  double current_angle = current_angle_axis.angle();
+  Eigen::Vector3d current_orientation = current_axis * current_angle;
+
+  this->ruckig_input.current_position = {current_pose.translation().x(), current_pose.translation().y(), current_pose.translation().z(), current_orientation.x(), current_orientation.y(), current_orientation.z()};
+  std::fill(this->ruckig_input.current_velocity.begin(), this->ruckig_input.current_velocity.end(), 0.0);
+  std::fill(this->ruckig_input.current_acceleration.begin(), this->ruckig_input.current_acceleration.end(), 0.0);
+
+  Eigen::AngleAxisd target_angle_axis(desired_pose_EE_in_base_frame.quaternion());
+  Eigen::Vector3d target_axis = target_angle_axis.axis();
+  double target_angle = target_angle_axis.angle();
+  Eigen::Vector3d target_orientation = target_axis * target_angle;
+
+  this->ruckig_input.target_position = {desired_pose_EE_in_base_frame.translation().x(), desired_pose_EE_in_base_frame.translation().y(), desired_pose_EE_in_base_frame.translation().z(), target_orientation.x(), target_orientation.y(), target_orientation.z()};
+  std::fill(this->ruckig_input.target_velocity.begin(), this->ruckig_input.target_velocity.end(), 0.0);
+  std::fill(this->ruckig_input.target_acceleration.begin(), this->ruckig_input.target_acceleration.end(), 0.0);
+
+  // Calculate max_velocity and max_acceleration based on max_time
+  double max_cartesian_velocity = (desired_pose_EE_in_base_frame.translation() - current_pose.translation()).norm() / max_time;
+  double max_cartesian_angular_velocity = (target_orientation - current_orientation).norm() / max_time;
+
+  this->ruckig_input.max_velocity = {max_cartesian_velocity, max_cartesian_velocity, max_cartesian_velocity, max_cartesian_angular_velocity, max_cartesian_angular_velocity, max_cartesian_angular_velocity};
+  this->ruckig_input.max_acceleration = {max_cartesian_velocity / max_time, max_cartesian_velocity / max_time, max_cartesian_velocity / max_time, max_cartesian_angular_velocity / max_time, max_cartesian_angular_velocity / max_time, max_cartesian_angular_velocity / max_time};
+  this->ruckig_input.max_jerk = {10.0, 10.0, 10.0, 10.0, 10.0, 10.0}; // default values
+
+
+  // if not thread is running, then start
+  if (this->running_controller == Controller::none) {
+    this->running_controller = Controller::ruckig;
+    this->control_thread = std::thread(&Franka::ruckig_controller, this);
+  } else {
+    this->interpolator_mutex.unlock();
+  }
+}
+
+void Franka::ruckig_controller() {
+    this->robot.control([&](const franka::RobotState &robot_state,
+                          franka::Duration period) -> franka::CartesianPose {
+        this->interpolator_mutex.lock();
+        this->curr_state = robot_state;
+
+        auto result = this->otg->update(this->ruckig_input, this->ruckig_output);
+
+        if (result == ruckig::Result::Finished) {
+            this->interpolator_mutex.unlock();
+            return franka::MotionFinished(franka::CartesianPose(this->curr_state.O_T_EE));
+        }
+        if (result < 0) {
+            std::cout << "Ruckig error " << result << std::endl;
+            this->interpolator_mutex.unlock();
+            return franka::MotionFinished(franka::CartesianPose(this->curr_state.O_T_EE));
+        }
+
+
+        this->ruckig_output.pass_to_input(this->ruckig_input);
+
+        Eigen::Vector3d new_position(this->ruckig_output.new_position[0], this->ruckig_output.new_position[1], this->ruckig_output.new_position[2]);
+        Eigen::Vector3d new_orientation_vec(this->ruckig_output.new_position[3], this->ruckig_output.new_position[4], this->ruckig_output.new_position[5]);
+        double angle = new_orientation_vec.norm();
+        Eigen::Vector3d axis = (angle == 0) ? Eigen::Vector3d(0,0,1) : new_orientation_vec.normalized();
+        Eigen::AngleAxisd new_orientation(angle, axis);
+
+        common::Pose new_pose(new_position, Eigen::Quaterniond(new_orientation));
+
+        this->interpolator_mutex.unlock();
+        return new_pose.affine_array();
+    });
 }
 
 // method to stop thread

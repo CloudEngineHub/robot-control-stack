@@ -126,6 +126,9 @@ PYBIND11_MODULE(_core, m) {
       .def("osc_set_cartesian_position",
            &rcs::hw::Franka::osc_set_cartesian_position,
            py::arg("desired_pos_EE_in_base_frame"))
+      .def("ruckig_set_cartesian_waypoint",
+           &rcs::hw::Franka::ruckig_set_cartesian_waypoint, py::arg("pose"),
+           py::arg("max_time"))
       .def("controller_set_joint_position",
            &rcs::hw::Franka::controller_set_joint_position,
            py::arg("desired_q"))
