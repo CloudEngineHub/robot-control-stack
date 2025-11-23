@@ -15,6 +15,7 @@
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
+#include "rcs/Teleop.h"
 
 // TODO: define exceptions
 
@@ -180,6 +181,26 @@ class PyHand : public rcs::common::Hand {
   }
   void close() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, close, );
+  }
+};
+
+/**
+ * @brief Teleop trampoline class for python bindings
+ */
+class PyTeleop : public rcs::common::Teleop {
+ public:
+  using rcs::common::Teleop::Teleop;  // Inherit constructors
+  using TeleopStateMap = std::map<std::string, rcs::common::TeleopDeviceState>;
+
+  TeleopStateMap get_state() override {
+    PYBIND11_OVERRIDE_PURE(
+        TeleopStateMap,
+        rcs::common::Teleop, get_state, );
+  }
+
+  rcs::common::TeleopControlMode get_control_mode() const override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::TeleopControlMode, rcs::common::Teleop,
+                           get_control_mode, );
   }
 };
 
@@ -416,6 +437,40 @@ PYBIND11_MODULE(_core, m) {
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &rcs::common::Hand::reset,
            py::call_guard<py::gil_scoped_release>());
+
+  py::enum_<rcs::common::TeleopControlMode>(common, "TeleopControlMode")
+      .value("CARTESIAN_TQUAT",
+             rcs::common::TeleopControlMode::CARTESIAN_TQUAT)
+      .value("CARTESIAN_XYZRPY",
+             rcs::common::TeleopControlMode::CARTESIAN_XYZRPY)
+      .value("JOINT_POSITIONS",
+             rcs::common::TeleopControlMode::JOINT_POSITIONS)
+      .export_values();
+
+  py::enum_<rcs::common::LogicalButton>(common, "LogicalButton")
+      .value("RECENTER", rcs::common::LogicalButton::RECENTER)
+      .value("GRASP", rcs::common::LogicalButton::GRASP)
+      .value("PRIMARY_ACTION", rcs::common::LogicalButton::PRIMARY_ACTION)
+      .value("SECONDARY_ACTION", rcs::common::LogicalButton::SECONDARY_ACTION)
+      .value("TRIGGER", rcs::common::LogicalButton::TRIGGER)
+      .export_values();
+
+  py::class_<rcs::common::TeleopDeviceState>(common, "TeleopDeviceState")
+      .def(py::init<>())
+      .def_readwrite("cartesian_pose",
+                     &rcs::common::TeleopDeviceState::cartesian_pose)
+      .def_readwrite("joint_positions",
+                     &rcs::common::TeleopDeviceState::joint_positions)
+      .def_readwrite("button_states",
+                     &rcs::common::TeleopDeviceState::button_states)
+      .def_readwrite("raw_axis_states",
+                     &rcs::common::TeleopDeviceState::raw_axis_states);
+
+  py::class_<rcs::common::Teleop, PyTeleop,
+             std::shared_ptr<rcs::common::Teleop>>(common, "Teleop")
+      .def(py::init<>())
+      .def("get_state", &rcs::common::Teleop::get_state)
+      .def("get_control_mode", &rcs::common::Teleop::get_control_mode);
 
   // SIM MODULE
   auto sim = m.def_submodule("sim", "sim module");

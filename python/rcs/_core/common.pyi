@@ -11,8 +11,11 @@ import pybind11_stubgen.typing_ext
 
 __all__: list[str] = [
     "BaseCameraConfig",
+    "CARTESIAN_TQUAT",
+    "CARTESIAN_XYZRPY",
     "FR3",
     "FrankaHandTCPOffset",
+    "GRASP",
     "GraspType",
     "Gripper",
     "GripperConfig",
@@ -24,13 +27,17 @@ __all__: list[str] = [
     "IdentityRotMatrix",
     "IdentityRotQuatVec",
     "IdentityTranslation",
+    "JOINT_POSITIONS",
     "Kinematics",
     "LATERAL_GRASP",
+    "LogicalButton",
     "POWER_GRASP",
     "PRECISION_GRASP",
+    "PRIMARY_ACTION",
     "Panda",
     "Pin",
     "Pose",
+    "RECENTER",
     "RPY",
     "Robot",
     "RobotConfig",
@@ -38,9 +45,14 @@ __all__: list[str] = [
     "RobotPlatform",
     "RobotState",
     "RobotType",
+    "SECONDARY_ACTION",
     "SIMULATION",
     "SO101",
+    "TRIGGER",
     "TRIPOD_GRASP",
+    "Teleop",
+    "TeleopControlMode",
+    "TeleopDeviceState",
     "UR5e",
     "XArm7",
     "robots_meta_config",
@@ -133,6 +145,44 @@ class Kinematics:
     def inverse(
         self, pose: Pose, q0: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], tcp_offset: Pose = ...
     ) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None: ...
+
+class LogicalButton:
+    """
+    Members:
+
+      RECENTER
+
+      GRASP
+
+      PRIMARY_ACTION
+
+      SECONDARY_ACTION
+
+      TRIGGER
+    """
+
+    GRASP: typing.ClassVar[LogicalButton]  # value = <LogicalButton.GRASP: 1>
+    PRIMARY_ACTION: typing.ClassVar[LogicalButton]  # value = <LogicalButton.PRIMARY_ACTION: 2>
+    RECENTER: typing.ClassVar[LogicalButton]  # value = <LogicalButton.RECENTER: 0>
+    SECONDARY_ACTION: typing.ClassVar[LogicalButton]  # value = <LogicalButton.SECONDARY_ACTION: 3>
+    TRIGGER: typing.ClassVar[LogicalButton]  # value = <LogicalButton.TRIGGER: 4>
+    __members__: typing.ClassVar[
+        dict[str, LogicalButton]
+    ]  # value = {'RECENTER': <LogicalButton.RECENTER: 0>, 'GRASP': <LogicalButton.GRASP: 1>, 'PRIMARY_ACTION': <LogicalButton.PRIMARY_ACTION: 2>, 'SECONDARY_ACTION': <LogicalButton.SECONDARY_ACTION: 3>, 'TRIGGER': <LogicalButton.TRIGGER: 4>}
+    def __eq__(self, other: typing.Any) -> bool: ...
+    def __getstate__(self) -> int: ...
+    def __hash__(self) -> int: ...
+    def __index__(self) -> int: ...
+    def __init__(self, value: int) -> None: ...
+    def __int__(self) -> int: ...
+    def __ne__(self, other: typing.Any) -> bool: ...
+    def __repr__(self) -> str: ...
+    def __setstate__(self, state: int) -> None: ...
+    def __str__(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def value(self) -> int: ...
 
 class Pose:
     def __getstate__(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(16)]: ...
@@ -313,6 +363,50 @@ class RobotType:
     @property
     def value(self) -> int: ...
 
+class Teleop:
+    def __init__(self) -> None: ...
+    def get_control_mode(self) -> TeleopControlMode: ...
+    def get_state(self) -> dict[str, TeleopDeviceState]: ...
+
+class TeleopControlMode:
+    """
+    Members:
+
+      CARTESIAN_TQUAT
+
+      CARTESIAN_XYZRPY
+
+      JOINT_POSITIONS
+    """
+
+    CARTESIAN_TQUAT: typing.ClassVar[TeleopControlMode]  # value = <TeleopControlMode.CARTESIAN_TQUAT: 0>
+    CARTESIAN_XYZRPY: typing.ClassVar[TeleopControlMode]  # value = <TeleopControlMode.CARTESIAN_XYZRPY: 1>
+    JOINT_POSITIONS: typing.ClassVar[TeleopControlMode]  # value = <TeleopControlMode.JOINT_POSITIONS: 2>
+    __members__: typing.ClassVar[
+        dict[str, TeleopControlMode]
+    ]  # value = {'CARTESIAN_TQUAT': <TeleopControlMode.CARTESIAN_TQUAT: 0>, 'CARTESIAN_XYZRPY': <TeleopControlMode.CARTESIAN_XYZRPY: 1>, 'JOINT_POSITIONS': <TeleopControlMode.JOINT_POSITIONS: 2>}
+    def __eq__(self, other: typing.Any) -> bool: ...
+    def __getstate__(self) -> int: ...
+    def __hash__(self) -> int: ...
+    def __index__(self) -> int: ...
+    def __init__(self, value: int) -> None: ...
+    def __int__(self) -> int: ...
+    def __ne__(self, other: typing.Any) -> bool: ...
+    def __repr__(self) -> str: ...
+    def __setstate__(self, state: int) -> None: ...
+    def __str__(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def value(self) -> int: ...
+
+class TeleopDeviceState:
+    button_states: dict[LogicalButton, float]
+    cartesian_pose: Pose | None
+    joint_positions: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None
+    raw_axis_states: dict[str, float] | None
+    def __init__(self) -> None: ...
+
 class Pin(Kinematics):
     def __init__(self, path: str, frame_id: str = "fr3_link8", urdf: bool = True) -> None: ...
 
@@ -323,14 +417,22 @@ def IdentityTranslation() -> numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype
 def _bootstrap_egl(fn_addr: int, display: int, context: int) -> None: ...
 def robots_meta_config(robot_type: RobotType) -> RobotMetaConfig: ...
 
+CARTESIAN_TQUAT: TeleopControlMode  # value = <TeleopControlMode.CARTESIAN_TQUAT: 0>
+CARTESIAN_XYZRPY: TeleopControlMode  # value = <TeleopControlMode.CARTESIAN_XYZRPY: 1>
 FR3: RobotType  # value = <RobotType.FR3: 0>
+GRASP: LogicalButton  # value = <LogicalButton.GRASP: 1>
 HARDWARE: RobotPlatform  # value = <RobotPlatform.HARDWARE: 1>
+JOINT_POSITIONS: TeleopControlMode  # value = <TeleopControlMode.JOINT_POSITIONS: 2>
 LATERAL_GRASP: GraspType  # value = <GraspType.LATERAL_GRASP: 2>
 POWER_GRASP: GraspType  # value = <GraspType.POWER_GRASP: 0>
 PRECISION_GRASP: GraspType  # value = <GraspType.PRECISION_GRASP: 1>
+PRIMARY_ACTION: LogicalButton  # value = <LogicalButton.PRIMARY_ACTION: 2>
 Panda: RobotType  # value = <RobotType.Panda: 4>
+RECENTER: LogicalButton  # value = <LogicalButton.RECENTER: 0>
+SECONDARY_ACTION: LogicalButton  # value = <LogicalButton.SECONDARY_ACTION: 3>
 SIMULATION: RobotPlatform  # value = <RobotPlatform.SIMULATION: 0>
 SO101: RobotType  # value = <RobotType.SO101: 2>
+TRIGGER: LogicalButton  # value = <LogicalButton.TRIGGER: 4>
 TRIPOD_GRASP: GraspType  # value = <GraspType.TRIPOD_GRASP: 3>
 UR5e: RobotType  # value = <RobotType.UR5e: 1>
 XArm7: RobotType  # value = <RobotType.XArm7: 3>
