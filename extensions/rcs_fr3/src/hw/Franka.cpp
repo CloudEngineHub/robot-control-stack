@@ -134,8 +134,8 @@ void Franka::set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch,
   this->robot.setGuidingMode(activated, elbow);
 }
 
-void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
-              double epsilon = 0.00025) {
+void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
+              double damping_factor = 0.05) {
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(
       M, Eigen::ComputeFullU | Eigen::ComputeFullV);
   Eigen::JacobiSVD<Eigen::MatrixXd>::SingularValuesType singular_vals =
@@ -143,12 +143,10 @@ void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
 
   Eigen::MatrixXd S_inv = M;
   S_inv.setZero();
+  double damping = damping_factor * damping_factor;
   for (int i = 0; i < singular_vals.size(); i++) {
-    if (singular_vals(i) < epsilon) {
-      S_inv(i, i) = 0.;
-    } else {
-      S_inv(i, i) = 1. / singular_vals(i);
-    }
+    S_inv(i, i) = singular_vals(i) /
+                  (singular_vals(i) * singular_vals(i) + damping);
   }
   M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
 }
@@ -306,6 +304,14 @@ void Franka::osc() {
       //   return franka::MotionFinished(franka::Torques(tau_d_array));
       // }
 
+      this->controller_time += period.toSec();
+      // On the first few cycles, the robot state might be unstable.
+      // We'll command zero torques to give it time to stabilize.
+      if (this->controller_time < 0.005) {
+        franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+        return zero_torques;
+      }
+
       Eigen::Vector3d desired_pos_EE_in_base_frame;
       Eigen::Quaterniond desired_quat_EE_in_base_frame;
 
@@ -316,7 +322,6 @@ void Franka::osc() {
 
       this->interpolator_mutex.lock();
       this->curr_state = robot_state;
-      this->controller_time += period.toSec();
       this->traj_interpolator.next_step(this->controller_time,
                                         desired_pos_EE_in_base_frame,
                                         desired_quat_EE_in_base_frame);
@@ -437,6 +442,9 @@ void Franka::osc() {
         }
       }
       tau_d << tau_d + Nullspace * avoidance_force;
+
+      // Add feedforward torques for coriolis forces
+      tau_d << tau_d + coriolis;
 
       std::array<double, 7> tau_d_array{};
       Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
