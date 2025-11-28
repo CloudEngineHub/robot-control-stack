@@ -86,6 +86,9 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     async_control: bool
     ik_solver: IKSolver
     load_parameters: FrankaLoad | None
+    max_cartesian_ori_dist: float | None
+    max_cartesian_pos_dist: float | None
+    max_joint_dist: float | None
     nominal_end_effector_frame: rcs._core.common.Pose | None
     speed_factor: float
     world_to_robot: rcs._core.common.Pose | None
