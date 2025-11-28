@@ -426,19 +426,31 @@ void Franka::osc() {
     dist2joint_min = q - joint_min_.matrix();
 
     for (int i = 0; i < 7; i++) {
-      if (dist2joint_max[i] < 0.25 && dist2joint_max[i] > 0.1)
-        avoidance_force[i] += -avoidance_weights_[i] * dist2joint_max[i];
-      if (dist2joint_min[i] < 0.25 && dist2joint_min[i] > 0.1)
-        avoidance_force[i] += avoidance_weights_[i] * dist2joint_min[i];
+      double limit_buffer = 0.25;  // rad
+      if (dist2joint_max[i] < limit_buffer) {
+        // Repulsive force increases as we get closer to the limit
+        avoidance_force[i] +=
+            -avoidance_weights_[i] * (1.0 - dist2joint_max[i] / limit_buffer);
+      }
+      if (dist2joint_min[i] < limit_buffer) {
+        avoidance_force[i] +=
+            avoidance_weights_[i] * (1.0 - dist2joint_min[i] / limit_buffer);
+      }
     }
     tau_d << tau_d + Nullspace * avoidance_force;
-    for (int i = 0; i < 7; i++) {
-      if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-      if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
-    }
 
     std::array<double, 7> tau_d_array{};
     Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
+
+    // Safety check for NaN/inf values
+    for (size_t i = 0; i < 7; ++i) {
+      if (!std::isfinite(tau_d_array[i])) {
+        std::cerr << "Franka::osc: Commanded torque for joint " << i
+                  << " is not finite. Commanding zero torques." << std::endl;
+        std::fill(tau_d_array.begin(), tau_d_array.end(), 0.0);
+        break;
+      }
+    }
 
     // end of controller
     std::chrono::high_resolution_clock::time_point t2 =
@@ -520,6 +532,7 @@ void Franka::joint_controller() {
 
     tau_d << Kp.cwiseProduct(joint_pos_error) - Kd.cwiseProduct(dq);
 
+    // Joint limit avoidance
     Eigen::Matrix<double, 7, 1> dist2joint_max;
     Eigen::Matrix<double, 7, 1> dist2joint_min;
 
@@ -527,12 +540,27 @@ void Franka::joint_controller() {
     dist2joint_min = q - joint_min_.matrix();
 
     for (int i = 0; i < 7; i++) {
-      if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-      if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
+      double limit_buffer = 0.15;  // rad
+      if (dist2joint_max[i] < limit_buffer && tau_d[i] > 0.) {
+        tau_d[i] *= dist2joint_max[i] / limit_buffer;
+      }
+      if (dist2joint_min[i] < limit_buffer && tau_d[i] < 0.) {
+        tau_d[i] *= dist2joint_min[i] / limit_buffer;
+      }
     }
 
     std::array<double, 7> tau_d_array{};
     Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
+
+    // Safety check for NaN/inf values
+    for (size_t i = 0; i < 7; ++i) {
+      if (!std::isfinite(tau_d_array[i])) {
+        std::cerr << "Franka::joint_controller: Commanded torque for joint " << i
+                  << " is not finite. Commanding zero torques." << std::endl;
+        std::fill(tau_d_array.begin(), tau_d_array.end(), 0.0);
+        break;
+      }
+    }
 
     // end of controller
     std::chrono::high_resolution_clock::time_point t2 =
