@@ -46,7 +46,8 @@ struct FrankaConfig : common::RobotConfig {
   // Safety limits for rejecting distant targets
   std::optional<double> max_cartesian_pos_dist = 0.3;   // in meters
   std::optional<double> max_cartesian_ori_dist = 1.57;  // in radians (90 deg)
-  std::optional<double> max_joint_dist = 1.5;  // norm of joint vector in radians
+  std::optional<double> max_joint_dist =
+      1.5;  // norm of joint vector in radians
 };
 
 struct FR3Config : FrankaConfig {};

@@ -145,8 +145,8 @@ void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
   S_inv.setZero();
   double damping = damping_factor * damping_factor;
   for (int i = 0; i < singular_vals.size(); i++) {
-    S_inv(i, i) = singular_vals(i) /
-                  (singular_vals(i) * singular_vals(i) + damping);
+    S_inv(i, i) =
+        singular_vals(i) / (singular_vals(i) * singular_vals(i) + damping);
   }
   M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
 }
@@ -192,15 +192,14 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
       throw std::runtime_error(
           "Desired joint configuration is too far from current configuration. "
           "Distance: " +
-          std::to_string(joint_dist) +
-          " rad, Limit: " + std::to_string(this->cfg.max_joint_dist.value()) +
-          " rad.");
+          std::to_string(joint_dist) + " rad, Limit: " +
+          std::to_string(this->cfg.max_joint_dist.value()) + " rad.");
     }
   }
 
-  this->joint_interpolator.reset(
-      this->controller_time, current_q, desired_q, policy_rate, traj_rate,
-      traj_interpolation_time_fraction);
+  this->joint_interpolator.reset(this->controller_time, current_q, desired_q,
+                                 policy_rate, traj_rate,
+                                 traj_interpolation_time_fraction);
 
   // if not thread is running, then start
   if (this->running_controller == Controller::none) {
@@ -236,18 +235,18 @@ void Franka::osc_set_cartesian_position(
 
   // Safety check for distance
   if (this->cfg.max_cartesian_pos_dist.has_value()) {
-    double dist = (curr_pose.translation() -
-                   desired_pose_EE_in_base_frame.translation())
-                      .norm();
+    double dist =
+        (curr_pose.translation() - desired_pose_EE_in_base_frame.translation())
+            .norm();
     if (dist > this->cfg.max_cartesian_pos_dist.value()) {
       if (this->running_controller == Controller::osc) {
         this->interpolator_mutex.unlock();
       }
       throw std::runtime_error(
-          "Desired cartesian position is too far from current position (dist: " +
-          std::to_string(dist) +
-          "m, max: " + std::to_string(cfg.max_cartesian_pos_dist.value()) +
-          "m)");
+          "Desired cartesian position is too far from current position "
+          "(dist: " +
+          std::to_string(dist) + "m, max: " +
+          std::to_string(cfg.max_cartesian_pos_dist.value()) + "m)");
     }
   }
   // Safety check for orientation
@@ -262,9 +261,8 @@ void Franka::osc_set_cartesian_position(
       throw std::runtime_error(
           "Desired cartesian orientation is too far from current orientation "
           "(dist: " +
-          std::to_string(angle) +
-          "rad, max: " + std::to_string(cfg.max_cartesian_ori_dist.value()) +
-          "rad)");
+          std::to_string(angle) + "rad, max: " +
+          std::to_string(cfg.max_cartesian_ori_dist.value()) + "rad)");
     }
   }
 
