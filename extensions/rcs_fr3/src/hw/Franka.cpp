@@ -153,14 +153,11 @@ void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
   M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
 }
 
-void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array, double min_torque,
-                         double max_torque) {
+void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array,
+                         const std::array<double, 7> &max_torques) {
   for (size_t i = 0; i < tau_d_array.size(); i++) {
-    if (tau_d_array[i] < min_torque) {
-      tau_d_array[i] = min_torque;
-    } else if (tau_d_array[i] > max_torque) {
-      tau_d_array[i] = max_torque;
-    }
+    tau_d_array[i] =
+        std::max(std::min(tau_d_array[i], max_torques[i]), -max_torques[i]);
   }
 }
 
@@ -460,10 +457,10 @@ void Franka::osc() {
     std::array<double, 7> tau_d_rate_limited = franka::limitRate(
         franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
-    // deoxys/config/control_config.yml
-    double min_torque = -5;
-    double max_torque = 5;
-    TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+    // Set per-joint torque limits
+    std::array<double, 7> max_torques = {
+        {20.0, 20.0, 20.0, 20.0, 10.0, 10.0, 10.0}};
+    TorqueSafetyGuardFn(tau_d_rate_limited, max_torques);
 
     return tau_d_rate_limited;
   });
@@ -570,10 +567,10 @@ void Franka::joint_controller() {
     std::array<double, 7> tau_d_rate_limited = franka::limitRate(
         franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
-    // deoxys/config/control_config.yml
-    double min_torque = -5;
-    double max_torque = 5;
-    TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+    // Set per-joint torque limits
+    std::array<double, 7> max_torques = {
+        {20.0, 20.0, 20.0, 20.0, 10.0, 10.0, 10.0}};
+    TorqueSafetyGuardFn(tau_d_rate_limited, max_torques);
 
     return tau_d_rate_limited;
   });
