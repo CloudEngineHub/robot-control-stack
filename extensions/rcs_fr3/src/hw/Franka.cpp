@@ -73,7 +73,7 @@ FrankaConfig* Franka::get_config() {
   return cfg;
 }
 
-FrankaState *Franka::get_state() {
+FrankaState* Franka::get_state() {
   franka::RobotState current_robot_state;
   if (this->running_controller == Controller::none) {
     current_robot_state = this->robot.readOnce();
@@ -81,7 +81,7 @@ FrankaState *Franka::get_state() {
     std::lock_guard<std::mutex> lock(this->interpolator_mutex);
     current_robot_state = this->curr_state;
   }
-  auto *state = new FrankaState();
+  auto* state = new FrankaState();
   state->robot_state = current_robot_state;
   return state;
 }
@@ -141,7 +141,7 @@ void Franka::set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch,
   this->robot.setGuidingMode(activated, elbow);
 }
 
-void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
+void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
               double damping_factor = 0.05) {
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(
       M, Eigen::ComputeFullU | Eigen::ComputeFullV);
@@ -158,8 +158,8 @@ void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
   M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
 }
 
-void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array,
-                         const std::array<double, 7> &max_torques) {
+void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array,
+                         const std::array<double, 7>& max_torques) {
   for (size_t i = 0; i < tau_d_array.size(); i++) {
     tau_d_array[i] =
         std::max(std::min(tau_d_array[i], max_torques[i]), -max_torques[i]);
@@ -348,7 +348,7 @@ void Franka::osc() {
   avoidance_weights_ << 1., 1., 1., 1., 1., 10., 10.;
 
   try {
-    this->robot.control([&](const franka::RobotState &robot_state,
+    this->robot.control([&](const franka::RobotState& robot_state,
                             franka::Duration period) -> franka::Torques {
       std::chrono::high_resolution_clock::time_point t1 =
           std::chrono::high_resolution_clock::now();
@@ -534,7 +534,7 @@ void Franka::osc() {
 
       return tau_d_rate_limited;
     });
-  } catch (const franka::Exception &e) {
+  } catch (const franka::Exception& e) {
     std::cerr << "Franka::osc() caught exception: " << e.what() << std::endl;
     std::cerr << "Attempting to recover from exception..." << std::endl;
     this->automatic_error_recovery();
@@ -570,7 +570,7 @@ void Franka::joint_controller() {
   joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
 
   try {
-    this->robot.control([&](const franka::RobotState &robot_state,
+    this->robot.control([&](const franka::RobotState& robot_state,
                             franka::Duration period) -> franka::Torques {
       std::chrono::high_resolution_clock::time_point t1 =
           std::chrono::high_resolution_clock::now();
@@ -653,7 +653,7 @@ void Franka::joint_controller() {
 
       return tau_d_rate_limited;
     });
-  } catch (const franka::Exception &e) {
+  } catch (const franka::Exception& e) {
     std::cerr << "Franka::joint_controller() caught exception: " << e.what()
               << std::endl;
     std::cerr << "Attempting to recover from exception..." << std::endl;
@@ -682,7 +682,7 @@ void Franka::zero_torque_controller() {
 
   this->controller_time = 0.0;
   try {
-    this->robot.control([&](const franka::RobotState &robot_state,
+    this->robot.control([&](const franka::RobotState& robot_state,
                             franka::Duration period) -> franka::Torques {
       this->interpolator_mutex.lock();
       this->curr_state = robot_state;
@@ -694,7 +694,7 @@ void Franka::zero_torque_controller() {
       }
       return franka::Torques({0, 0, 0, 0, 0, 0, 0});
     });
-  } catch (const franka::Exception &e) {
+  } catch (const franka::Exception& e) {
     std::cerr << "Franka::zero_torque_controller() caught exception: "
               << e.what() << std::endl;
     std::cerr << "Attempting to recover from exception..." << std::endl;
