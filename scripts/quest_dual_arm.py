@@ -6,6 +6,7 @@ from time import sleep
 import numpy as np
 import oculus_reader
 from rcs._core.common import RPY, Pose, RobotPlatform
+from rcs._core.sim import SimConfig
 from rcs.camera.hw import HardwareCameraSet
 from rcs.envs.base import (
     ControlMode,
@@ -14,13 +15,12 @@ from rcs.envs.base import (
     RelativeActionSpace,
     RelativeTo,
 )
-from rcs.envs.creators import SimEnvCreator
+from rcs.envs.creators import SimMultiEnvCreator
 from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 from rcs.utils import SimpleFrameRate
 from rcs_fr3.creators import RCSFR3MultiEnvCreator
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
 from rcs_realsense.utils import default_realsense
-from rcs_toolbox.wrappers.recorder import StorageWrapperParquet
 
 # from rcs_xarm7.creators import RCSXArm7EnvCreator
 
@@ -256,16 +256,19 @@ def main():
         # FR3
         robot_cfg = default_sim_robot_cfg("fr3_empty_world")
 
-        env_rel = SimEnvCreator()(
+        sim_cfg = SimConfig()
+        sim_cfg.async_control = True
+        env_rel, sim = SimMultiEnvCreator()(
+            name2id=ROBOT2IP,
             robot_cfg=robot_cfg,
             control_mode=ControlMode.CARTESIAN_TQuat,
-            collision_guard=False,
             gripper_cfg=default_sim_gripper_cfg(),
             # cameras=default_mujoco_cameraset_cfg(),
             max_relative_movement=0.5,
             relative_to=RelativeTo.CONFIGURED_ORIGIN,
+            sim_cfg=sim_cfg,
         )
-        env_rel.get_wrapper_attr("sim").open_gui()
+        sim.open_gui()
 
     env_rel.reset()
 

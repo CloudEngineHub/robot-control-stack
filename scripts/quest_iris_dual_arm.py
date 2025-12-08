@@ -1,14 +1,10 @@
 import logging
 import threading
 from time import sleep
-# from simpub.core.node_manager import init_xr_node_manager
-# from simpub.xr_device.meta_quest3 import MetaQuest3
-
-from simpub.core.node_manager import init_xr_node_manager
-from simpub.xr_device.meta_quest3 import MetaQuest3
 
 import numpy as np
 from rcs._core.common import RPY, Pose, RobotPlatform
+from rcs._core.sim import SimConfig
 from rcs.camera.hw import HardwareCameraSet
 from rcs.envs.base import (
     ControlMode,
@@ -17,13 +13,16 @@ from rcs.envs.base import (
     RelativeActionSpace,
     RelativeTo,
 )
-from rcs.envs.creators import SimEnvCreator
+from rcs.envs.creators import SimMultiEnvCreator
 from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 from rcs.utils import SimpleFrameRate
 from rcs_fr3.creators import RCSFR3MultiEnvCreator
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
 from rcs_realsense.utils import default_realsense
-from rcs_toolbox.wrappers.recorder import StorageWrapperParquet
+from simpub.core.simpub_server import SimPublisher
+from simpub.parser.simdata import SimObject, SimScene
+from simpub.sim.mj_publisher import MujocoPublisher
+from simpub.xr_device.meta_quest3 import MetaQuest3
 
 # from rcs_xarm7.creators import RCSXArm7EnvCreator
 
@@ -39,7 +38,7 @@ logger = logging.getLogger(__name__)
 INCLUDE_ROTATION = True
 ROBOT2IP = {
     "left": "192.168.101.1",
-    "right": "192.168.102.1",
+    # "right": "192.168.102.1",
 }
 
 
@@ -53,27 +52,35 @@ RECORD_FPS = 30
 #     "arro": "243522070385",
 # }
 CAMERA_DICT = None
-MQ3_ADDR = "192.168.0.134"
+MQ3_ADDR = "10.228.9.83"
 
+
+class MySimPublisher(SimPublisher):
+    def get_update(self):
+        return {}
+
+
+class MySimScene(SimScene):
+    def __init__(self):
+        super().__init__()
+        self.root = SimObject(name="root")
 
 
 class QuestReader(threading.Thread):
 
-    transform_to_robot = Pose(RPY(roll=np.deg2rad(90), yaw=np.deg2rad(-90)))
+    transform_to_robot = Pose()  # RPY(roll=np.deg2rad(90), yaw=np.deg2rad(-90)))
 
     def __init__(self, env: RelativeActionSpace):
         super().__init__()
         # self._reader = oculus_reader.OculusReader()
 
-        net_manager = init_xr_node_manager(MQ3_ADDR)
-        net_manager.start_discover_node_loop()
         self._reader = MetaQuest3("RCSNode")
 
         self._resource_lock = threading.Lock()
         self._env_lock = threading.Lock()
         self._env = env
 
-        self.controller_names = ["left", "right"]
+        self.controller_names = ["left"]  # , "right"]
         self._trg_btn = {"left": "index_trigger", "right": "index_trigger"}
         self._grp_btn = {"left": "hand_trigger", "right": "hand_trigger"}
         self._clb_btn = {"left": "X", "right": "A"}
@@ -128,30 +135,30 @@ class QuestReader(threading.Thread):
         while not self._exit_requested:
             # pos, buttons = self._reader.get_transformations_and_buttons()
             input_data = self._reader.get_controller_data()
-            if not warning_raised and input_data:
+            if not warning_raised and input_data is None:
                 logger.warning("[Quest Reader] packets empty")
                 warning_raised = True
                 sleep(0.5)
                 continue
-            elif input_data:
+            elif input_data is None:
                 sleep(0.5)
                 continue
             elif warning_raised:
                 logger.warning("[Quest Reader] packets arriving again")
                 warning_raised = False
 
-
             for controller in self.controller_names:
                 last_controller_pose = Pose(
-                    translation=np.array(input_data[controller]["pos"]), quaternion=np.array(input_data[controller]["rot"])
+                    translation=np.array(input_data[controller]["pos"]),
+                    quaternion=np.array(input_data[controller]["rot"]),
                 )
 
                 # if input_data[self._clb_btn[controller]] and (
                 #     self._prev_data is None or not self._prev_data[self._clb_btn[controller]]
                 # ):
-                    # print("clb button pressed")
-                    # with self._resource_lock:
-                    #     self._set_frame[controller] = last_controller_pose
+                # print("clb button pressed")
+                # with self._resource_lock:
+                #     self._set_frame[controller] = last_controller_pose
 
                 if input_data[controller][self._trg_btn[controller]] and (
                     self._prev_data is None or not self._prev_data[controller][self._trg_btn[controller]]
@@ -262,20 +269,25 @@ def main():
             max_relative_movement=(0.5, np.deg2rad(90)),
             relative_to=RelativeTo.CONFIGURED_ORIGIN,
         )
+        MySimPublisher(MySimScene(), MQ3_ADDR)
     else:
         # FR3
         robot_cfg = default_sim_robot_cfg("fr3_empty_world")
 
-        env_rel = SimEnvCreator()(
+        sim_cfg = SimConfig()
+        sim_cfg.async_control = True
+        env_rel, sim = SimMultiEnvCreator()(
+            name2id=ROBOT2IP,
             robot_cfg=robot_cfg,
             control_mode=ControlMode.CARTESIAN_TQuat,
-            collision_guard=False,
             gripper_cfg=default_sim_gripper_cfg(),
             # cameras=default_mujoco_cameraset_cfg(),
             max_relative_movement=0.5,
             relative_to=RelativeTo.CONFIGURED_ORIGIN,
+            sim_cfg=sim_cfg,
         )
-        env_rel.get_wrapper_attr("sim").open_gui()
+        sim.open_gui()
+        MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
 
     env_rel.reset()
 
