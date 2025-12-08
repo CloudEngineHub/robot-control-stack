@@ -14,6 +14,7 @@ from rcs.envs.base import (
     ControlMode,
     GripperWrapper,
     HandWrapper,
+    MultiRobotWrapper,
     RelativeActionSpace,
     RelativeTo,
     RobotEnv,
@@ -130,6 +131,53 @@ class SimEnvCreator(EnvCreator):
             env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 
         return env
+
+class SimMultiEnvCreator(RCSHardwareEnvCreator):
+    def __call__(  # type: ignore
+        self,
+        name2id: dict[str, str],
+        control_mode: ControlMode,
+        robot_cfg: rcs.sim.SimRobotConfig,
+        gripper_cfg: rcs.sim.SimGripperConfig | None = None,
+        sim_cfg: rcs.sim.SimConfig | None = None,
+        hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
+        cameras: dict[str, SimCameraConfig] | None = None,
+        max_relative_movement: float | tuple[float, float] | None = None,
+        relative_to: RelativeTo = RelativeTo.LAST_STEP,
+        sim_wrapper: Type[SimWrapper] | None = None,
+    ) -> gym.Env:
+
+        simulation = sim.Sim(robot_cfg.mjcf_scene_path, sim_cfg)
+        ik = rcs.common.Pin(
+            robot_cfg.kinematic_model_path,
+            robot_cfg.attachment_site,
+            urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+        )
+        # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
+
+        robots: dict[str, rcs.sim.SimRobotConfig] = {}
+        for key, ip in name2id.items():
+            robots[key] = rcs.sim.SimRobot(sim=simulation, ik=ik, cfg=robot_cfg)
+
+        envs = {}
+        for key, ip in name2id.items():
+            env: gym.Env = RobotEnv(robots[key], control_mode)
+            env = RobotSimWrapper(env, simulation, sim_wrapper)
+            if gripper_cfg is not None:
+                gripper = rcs.sim.SimGripper(simulation, gripper_cfg)
+                env = GripperWrapper(env, gripper, binary=True)
+
+            if max_relative_movement is not None:
+                env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
+            envs[key] = env
+
+        env = MultiRobotWrapper(envs)
+        if cameras is not None:
+            camera_set = typing.cast(
+                BaseCameraSet, SimCameraSet(simulation, cameras, physical_units=True, render_on_demand=True)
+            )
+            env = CameraSetWrapper(env, camera_set, include_depth=True)
+        return env, simulation
 
 
 class SimTaskEnvCreator(EnvCreator):
