@@ -18,7 +18,10 @@ def default_sim_robot_cfg(scene: str = "fr3_empty_world", idx: str = "0") -> sim
     robot_cfg = rcs.sim.SimRobotConfig()
     robot_cfg.robot_type = rcs.scenes[scene].robot_type
     robot_cfg.add_id(idx)
-    robot_cfg.mjcf_scene_path = rcs.scenes[scene].mjb
+    if rcs.scenes[scene].mjb is not None:
+        robot_cfg.mjcf_scene_path = rcs.scenes[scene].mjb
+    else:
+        robot_cfg.mjcf_scene_path = rcs.scenes[scene].mjcf_scene
     robot_cfg.kinematic_model_path = rcs.scenes[scene].mjcf_robot
     # robot_cfg.kinematic_model_path = rcs.scenes[scene].urdf
     return robot_cfg
