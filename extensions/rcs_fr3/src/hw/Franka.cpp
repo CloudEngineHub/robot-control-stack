@@ -174,6 +174,7 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   if (this->running_controller == Controller::none) {
     this->controller_time = 0.0;
     this->get_joint_position();
+    this->joint_interpolator = common::LinearJointPositionTrajInterpolator();
   } else if (this->running_controller != Controller::jsc) {
     // runtime error
     throw std::runtime_error(
@@ -208,7 +209,7 @@ void Franka::osc_set_cartesian_position(
 
   if (this->running_controller == Controller::none) {
     this->controller_time = 0.0;
-    this->get_cartesian_position();
+    this->traj_interpolator = common::LinearPoseTrajInterpolator();
   } else if (this->running_controller != Controller::osc) {
     throw std::runtime_error(
         "Controller type must but osc but is " +
@@ -586,6 +587,7 @@ void Franka::zero_torque_controller() {
 
 void Franka::move_home() {
   // sync
+  this->stop_control_thread();
   FrankaMotionGenerator motion_generator(
       this->cfg.speed_factor,
       common::robots_meta_config.at(this->cfg.robot_type).q_home);
