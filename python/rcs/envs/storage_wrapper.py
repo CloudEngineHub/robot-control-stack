@@ -72,6 +72,7 @@ class StorageWrapper(gym.Wrapper):
         self.step_cnt = 0
         self._pause = True
         self._success = start_record
+        self._prev_action = None
         self.thread_pool = ThreadPoolExecutor()
         self.queue = Queue(maxsize=2)
         self.uuid = uuid4()
@@ -143,7 +144,8 @@ class StorageWrapper(gym.Wrapper):
             self._flatten_arrays(obs)
             if "success" in info and info["success"]:
                 self.success()
-            self.buffer.append({"obs": obs, "reward": reward, "step": self.step_cnt, "uuid": self.uuid.bytes, "success": self._success})
+            self.buffer.append({"obs": obs, "reward": reward, "step": self.step_cnt, "uuid": self.uuid.bytes, "success": self._success, "action": self._prev_action})
+            self._prev_action = action
             self.step_cnt += 1
             if len(self.buffer) == self.batch_size:
                 self._flush()
@@ -165,6 +167,7 @@ class StorageWrapper(gym.Wrapper):
             self._flush()
         self._pause = True
         self._success = False
+        self._prev_action = None
         obs, info = self.env.reset()
         self.step_cnt = 0
         self.uuid = uuid4()
