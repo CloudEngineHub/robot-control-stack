@@ -14,6 +14,8 @@ from rcs.envs.base import (
     RelativeTo,
 )
 from rcs.envs.creators import SimMultiEnvCreator
+from rcs.envs.sim import DigitalTwin
+from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 from rcs.utils import SimpleFrameRate
 from rcs_fr3.creators import RCSFR3MultiEnvCreator
@@ -54,6 +56,8 @@ RECORD_FPS = 30
 CAMERA_DICT = None
 MQ3_ADDR = "10.228.9.83"
 
+DATASET_PATH = "test_data_iris_dual_arm"
+
 
 class MySimPublisher(SimPublisher):
     def get_update(self):
@@ -83,8 +87,10 @@ class QuestReader(threading.Thread):
         self.controller_names = ["left"]  # , "right"]
         self._trg_btn = {"left": "index_trigger", "right": "index_trigger"}
         self._grp_btn = {"left": "hand_trigger", "right": "hand_trigger"}
-        self._clb_btn = {"left": "X", "right": "A"}
-        self._home_btn = "B"
+        self._start_btn = "X"
+        self._stop_btn = "Y"
+        self._home_btn = "A"
+        self._unsuccessful_btn = "B"
 
         self._prev_data = None
         self._exit_requested = False
@@ -147,18 +153,39 @@ class QuestReader(threading.Thread):
                 logger.warning("[Quest Reader] packets arriving again")
                 warning_raised = False
 
+            # start recording
+            if input_data[self._start_btn] and (
+                self._prev_data is None or not self._prev_data[self._start_btn]
+            ):
+                print("start button pressed")
+                with self._env_lock:
+                    self._env.unwrapped.get_wrapper_attr("start_record")()
+
+            if input_data[self._stop_btn] and (
+                self._prev_data is None or not self._prev_data[self._stop_btn]
+            ):
+                print("reset successful pressed: resetting env")
+                with self._env_lock:
+                    # set successful
+                    self._env.unwrapped.get_wrapper_attr("success")()
+                    # this might also move the robot to the home position
+                    self._env.reset()
+
+            # reset unsuccessful
+            if input_data[self._unsuccessful_btn] and (
+                self._prev_data is None or not self._prev_data[self._unsuccessful_btn]
+            ):
+                print("reset unsuccessful pressed: resetting env")
+                with self._env_lock:
+                    self._env.reset()
+
+
             for controller in self.controller_names:
                 last_controller_pose = Pose(
                     translation=np.array(input_data[controller]["pos"]),
                     quaternion=np.array(input_data[controller]["rot"]),
                 )
 
-                # if input_data[self._clb_btn[controller]] and (
-                #     self._prev_data is None or not self._prev_data[self._clb_btn[controller]]
-                # ):
-                # print("clb button pressed")
-                # with self._resource_lock:
-                #     self._set_frame[controller] = last_controller_pose
 
                 if input_data[controller][self._trg_btn[controller]] and (
                     self._prev_data is None or not self._prev_data[controller][self._trg_btn[controller]]
@@ -269,7 +296,27 @@ def main():
             max_relative_movement=(0.5, np.deg2rad(90)),
             relative_to=RelativeTo.CONFIGURED_ORIGIN,
         )
+        env_rel = StorageWrapper(env_rel, DATASET_PATH, 32, max_rows_per_group=100, max_rows_per_file=1000)
         MySimPublisher(MySimScene(), MQ3_ADDR)
+
+        # robot_cfg = default_sim_robot_cfg("fr3_empty_world")
+        # sim_cfg = SimConfig()
+        # sim_cfg.async_control = True
+        # twin_env, sim = SimMultiEnvCreator()(
+        #     name2id=ROBOT2IP,
+        #     robot_cfg=robot_cfg,
+        #     control_mode=ControlMode.CARTESIAN_TQuat,
+        #     gripper_cfg=default_sim_gripper_cfg(),
+        #     # cameras=default_mujoco_cameraset_cfg(),
+        #     max_relative_movement=0.5,
+        #     relative_to=RelativeTo.CONFIGURED_ORIGIN,
+        #     sim_cfg=sim_cfg,
+        # )
+        # sim.open_gui()
+        # MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
+        # env_rel = DigitalTwin(env_rel, twin_env)
+
+
     else:
         # FR3
         robot_cfg = default_sim_robot_cfg("fr3_empty_world")
