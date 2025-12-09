@@ -20,6 +20,7 @@ class StorageWrapper(gym.Wrapper):
         base_dir: str,
         batch_size: int,
         schema: Optional[pa.Schema] = None,
+        start_record: bool = False,
         basename_template: Optional[str] = None,
         max_rows_per_group: Optional[int] = None,
         max_rows_per_file: Optional[int] = None,
@@ -70,6 +71,7 @@ class StorageWrapper(gym.Wrapper):
         self.buffer = []
         self.step_cnt = 0
         self._pause = True
+        self._success = start_record
         self.thread_pool = ThreadPoolExecutor()
         self.queue = Queue(maxsize=2)
         self.uuid = uuid4()
@@ -139,11 +141,16 @@ class StorageWrapper(gym.Wrapper):
             assert isinstance(obs, dict)
             self._encode_images(obs)
             self._flatten_arrays(obs)
-            self.buffer.append({"obs": obs, "reward": reward, "step": self.step_cnt, "uuid": self.uuid.bytes})
+            if "success" in info and info["success"]:
+                self.success()
+            self.buffer.append({"obs": obs, "reward": reward, "step": self.step_cnt, "uuid": self.uuid.bytes, "success": self._success})
             self.step_cnt += 1
             if len(self.buffer) == self.batch_size:
                 self._flush()
         return obs, reward, terminated, truncated, info
+
+    def success(self):
+        self._success = True
 
     def stop_record(self):
         self._pause = True
@@ -157,6 +164,7 @@ class StorageWrapper(gym.Wrapper):
         if len(self.buffer) > 0:
             self._flush()
         self._pause = True
+        self._success = False
         obs, info = self.env.reset()
         self.step_cnt = 0
         self.uuid = uuid4()
