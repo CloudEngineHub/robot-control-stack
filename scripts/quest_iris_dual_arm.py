@@ -39,8 +39,8 @@ logger = logging.getLogger(__name__)
 
 INCLUDE_ROTATION = True
 ROBOT2IP = {
-    "left": "192.168.101.1",
-    # "right": "192.168.102.1",
+    # "left": "192.168.102.1",
+    "right": "192.168.102.1",
 }
 
 
@@ -54,9 +54,10 @@ RECORD_FPS = 30
 #     "arro": "243522070385",
 # }
 CAMERA_DICT = None
-MQ3_ADDR = "10.228.9.83"
+MQ3_ADDR = "10.42.0.1"
 
 DATASET_PATH = "test_data_iris_dual_arm"
+INSTRUCTION = "build a tower with the blocks in front of you"
 
 
 class MySimPublisher(SimPublisher):
@@ -84,13 +85,12 @@ class QuestReader(threading.Thread):
         self._env_lock = threading.Lock()
         self._env = env
 
-        self.controller_names = ["left"]  # , "right"]
+        self.controller_names = ["right"]  # , "right"]
         self._trg_btn = {"left": "index_trigger", "right": "index_trigger"}
         self._grp_btn = {"left": "hand_trigger", "right": "hand_trigger"}
-        self._start_btn = "X"
-        self._stop_btn = "Y"
-        self._home_btn = "A"
-        self._unsuccessful_btn = "B"
+        self._start_btn = "A"
+        self._stop_btn = "B"
+        self._unsuccessful_btn = "Y"
 
         self._prev_data = None
         self._exit_requested = False
@@ -159,7 +159,7 @@ class QuestReader(threading.Thread):
             ):
                 print("start button pressed")
                 with self._env_lock:
-                    self._env.unwrapped.get_wrapper_attr("start_record")()
+                    self._env.get_wrapper_attr("start_record")()
 
             if input_data[self._stop_btn] and (
                 self._prev_data is None or not self._prev_data[self._stop_btn]
@@ -167,7 +167,7 @@ class QuestReader(threading.Thread):
                 print("reset successful pressed: resetting env")
                 with self._env_lock:
                     # set successful
-                    self._env.unwrapped.get_wrapper_attr("success")()
+                    self._env.get_wrapper_attr("success")()
                     # this might also move the robot to the home position
                     self._env.reset()
 
@@ -296,7 +296,7 @@ def main():
             max_relative_movement=(0.5, np.deg2rad(90)),
             relative_to=RelativeTo.CONFIGURED_ORIGIN,
         )
-        env_rel = StorageWrapper(env_rel, DATASET_PATH, 32, max_rows_per_group=100, max_rows_per_file=1000)
+        env_rel = StorageWrapper(env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000)
         MySimPublisher(MySimScene(), MQ3_ADDR)
 
         # robot_cfg = default_sim_robot_cfg("fr3_empty_world")

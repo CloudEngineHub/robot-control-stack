@@ -18,7 +18,8 @@ class StorageWrapper(gym.Wrapper):
         self,
         env: gym.Env,
         base_dir: str,
-        batch_size: int,
+        instruction: str,
+        batch_size: int = 32,
         schema: Optional[pa.Schema] = None,
         start_record: bool = False,
         basename_template: Optional[str] = None,
@@ -71,6 +72,7 @@ class StorageWrapper(gym.Wrapper):
         self.buffer = []
         self.step_cnt = 0
         self._pause = True
+        self.instruction = instruction
         self._success = start_record
         self._prev_action = None
         self.thread_pool = ThreadPoolExecutor()
@@ -95,7 +97,7 @@ class StorageWrapper(gym.Wrapper):
             max_rows_per_group=self.max_rows_per_group,
             max_rows_per_file=self.max_rows_per_file,
             partitioning=ds.partitioning(
-                schema=pa.schema(fields=[pa.field("uuid", pa.binary(36))]),
+                schema=pa.schema(fields=[pa.field("uuid", pa.string())]),
                 flavor="filename",
             ),
         )
@@ -140,11 +142,12 @@ class StorageWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         if not self._pause:
             assert isinstance(obs, dict)
-            self._encode_images(obs)
+            if "frames" in obs:
+                self._encode_images(obs)
             self._flatten_arrays(obs)
             if "success" in info and info["success"]:
                 self.success()
-            self.buffer.append({"obs": obs, "reward": reward, "step": self.step_cnt, "uuid": self.uuid.bytes, "success": self._success, "action": self._prev_action})
+            self.buffer.append({"obs": obs, "reward": reward, "step": self.step_cnt, "uuid": self.uuid.hex, "success": self._success, "action": self._prev_action, "instruction": self.instruction})
             self._prev_action = action
             self.step_cnt += 1
             if len(self.buffer) == self.batch_size:
