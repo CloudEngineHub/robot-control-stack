@@ -69,6 +69,7 @@ class StorageWrapper(gym.Wrapper):
         self.max_rows_per_file = max_rows_per_file
         self.buffer = []
         self.step_cnt = 0
+        self._pause = True
         self.thread_pool = ThreadPoolExecutor()
         self.queue = Queue(maxsize=2)
         self.uuid = uuid4()
@@ -134,23 +135,35 @@ class StorageWrapper(gym.Wrapper):
             msg = "Writer thread failed"
             raise RuntimeError(msg) from exc
         obs, reward, terminated, truncated, info = self.env.step(action)
-        assert isinstance(obs, dict)
-        self._encode_images(obs)
-        self._flatten_arrays(obs)
-        self.buffer.append({"obs": obs, "reward": reward, "step": self.step_cnt, "uuid": self.uuid.bytes})
-        self.step_cnt += 1
-        if len(self.buffer) == self.batch_size:
-            self._flush()
+        if not self._pause:
+            assert isinstance(obs, dict)
+            self._encode_images(obs)
+            self._flatten_arrays(obs)
+            self.buffer.append({"obs": obs, "reward": reward, "step": self.step_cnt, "uuid": self.uuid.bytes})
+            self.step_cnt += 1
+            if len(self.buffer) == self.batch_size:
+                self._flush()
         return obs, reward, terminated, truncated, info
+
+    def stop_record(self):
+        self._pause = True
+        if len(self.buffer) > 0:
+            self._flush()
+
+    def start_record(self):
+        self._pause = False
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None):
         if len(self.buffer) > 0:
             self._flush()
+        self._pause = True
         obs, info = self.env.reset()
         self.step_cnt = 0
         self.uuid = uuid4()
         return obs, info
 
     def close(self):
+        if len(self.buffer) > 0:
+            self._flush()
         self.queue.put(self.QueueSentinel)
         wait([self._writer_future])
