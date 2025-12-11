@@ -2,6 +2,7 @@ import logging
 from os import PathLike
 
 from digit_interface import Digit
+from rcs._core import common
 from rcs._core.common import BaseCameraConfig
 from rcs._core.sim import CameraType, SimCameraConfig
 from rcs.camera.digit_cam import DigitCam
@@ -17,6 +18,7 @@ logger.setLevel(logging.INFO)
 def default_sim_robot_cfg(scene: str = "fr3_empty_world", idx: str = "0") -> sim.SimRobotConfig:
     robot_cfg = rcs.sim.SimRobotConfig()
     robot_cfg.robot_type = rcs.scenes[scene].robot_type
+    robot_cfg.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
     robot_cfg.add_id(idx)
     if rcs.scenes[scene].mjb is not None:
         robot_cfg.mjcf_scene_path = rcs.scenes[scene].mjb

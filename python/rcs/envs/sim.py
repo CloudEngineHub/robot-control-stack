@@ -455,7 +455,6 @@ class DigitalTwin(gym.Wrapper):
     def __init__(self, env, twin_env):
         super().__init__(env)
         self.twin_env = twin_env
-        assert self.twin_env.unwrapped.get_control_mode() == ControlMode.JOINTS
 
 
     def step(self, action):

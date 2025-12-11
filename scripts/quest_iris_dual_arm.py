@@ -39,8 +39,8 @@ logger = logging.getLogger(__name__)
 
 INCLUDE_ROTATION = True
 ROBOT2IP = {
-    # "left": "192.168.102.1",
-    "right": "192.168.102.1",
+    "right": "192.168.101.1",
+    "left": "192.168.102.1",
 }
 
 
@@ -85,7 +85,7 @@ class QuestReader(threading.Thread):
         self._env_lock = threading.Lock()
         self._env = env
 
-        self.controller_names = ["right"]  # , "right"]
+        self.controller_names = ["left", "right"]
         self._trg_btn = {"left": "index_trigger", "right": "index_trigger"}
         self._grp_btn = {"left": "hand_trigger", "right": "hand_trigger"}
         self._start_btn = "A"
@@ -297,24 +297,21 @@ def main():
             relative_to=RelativeTo.CONFIGURED_ORIGIN,
         )
         env_rel = StorageWrapper(env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000)
-        MySimPublisher(MySimScene(), MQ3_ADDR)
+        # MySimPublisher(MySimScene(), MQ3_ADDR)
 
-        # robot_cfg = default_sim_robot_cfg("fr3_empty_world")
-        # sim_cfg = SimConfig()
-        # sim_cfg.async_control = True
-        # twin_env, sim = SimMultiEnvCreator()(
-        #     name2id=ROBOT2IP,
-        #     robot_cfg=robot_cfg,
-        #     control_mode=ControlMode.CARTESIAN_TQuat,
-        #     gripper_cfg=default_sim_gripper_cfg(),
-        #     # cameras=default_mujoco_cameraset_cfg(),
-        #     max_relative_movement=0.5,
-        #     relative_to=RelativeTo.CONFIGURED_ORIGIN,
-        #     sim_cfg=sim_cfg,
-        # )
-        # sim.open_gui()
-        # MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
-        # env_rel = DigitalTwin(env_rel, twin_env)
+        robot_cfg = default_sim_robot_cfg("fr3_empty_world")
+        sim_cfg = SimConfig()
+        sim_cfg.async_control = True
+        twin_env, sim = SimMultiEnvCreator()(
+            name2id=ROBOT2IP,
+            robot_cfg=robot_cfg,
+            control_mode=ControlMode.JOINTS,
+            gripper_cfg=default_sim_gripper_cfg(),
+            sim_cfg=sim_cfg,
+        )
+        sim.open_gui()
+        MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
+        env_rel = DigitalTwin(env_rel, twin_env)
 
 
     else:
