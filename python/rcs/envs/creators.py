@@ -156,12 +156,12 @@ class SimMultiEnvCreator(RCSHardwareEnvCreator):
         )
         # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
 
-        robots: dict[str, rcs.sim.SimRobotConfig] = {}
-        for key, ip in name2id.items():
+        robots: dict[str, rcs.sim.SimRobot] = {}
+        for key in name2id:
             robots[key] = rcs.sim.SimRobot(sim=simulation, ik=ik, cfg=robot_cfg)
 
         envs = {}
-        for key, ip in name2id.items():
+        for key in name2id:
             env: gym.Env = RobotEnv(robots[key], control_mode)
             env = RobotSimWrapper(env, simulation, sim_wrapper)
             if gripper_cfg is not None:
@@ -178,7 +178,7 @@ class SimMultiEnvCreator(RCSHardwareEnvCreator):
                 BaseCameraSet, SimCameraSet(simulation, cameras, physical_units=True, render_on_demand=True)
             )
             env = CameraSetWrapper(env, camera_set, include_depth=True)
-        return env, simulation
+        return env
 
 
 class SimTaskEnvCreator(EnvCreator):

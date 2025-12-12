@@ -14,7 +14,6 @@ from rcs.envs.base import (
     RelativeTo,
 )
 from rcs.envs.creators import SimMultiEnvCreator
-from rcs.envs.sim import DigitalTwin
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 from rcs.utils import SimpleFrameRate
@@ -102,7 +101,7 @@ class QuestReader(threading.Thread):
         self._step_env = False
         self._set_frame = {key: Pose() for key in self.controller_names}
 
-    def next_action(self) -> Pose:
+    def next_action(self) -> tuple[dict[str, Pose], dict[str, float]]:
         with self._resource_lock:
             transforms = {}
             for controller in self.controller_names:
@@ -141,10 +140,10 @@ class QuestReader(threading.Thread):
                 warning_raised = True
                 sleep(0.5)
                 continue
-            elif input_data is None:
+            if input_data is None:
                 sleep(0.5)
                 continue
-            elif warning_raised:
+            if warning_raised:
                 logger.warning("[Quest Reader] packets arriving again")
                 warning_raised = False
 
@@ -280,7 +279,7 @@ class QuestReader(threading.Thread):
 def main():
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
 
-        camera_set = HardwareCameraSet([default_realsense(CAMERA_DICT)]) if CAMERA_DICT is not None else None
+        camera_set = HardwareCameraSet([default_realsense(CAMERA_DICT)]) if CAMERA_DICT is not None else None  # type: ignore
         env_rel = RCSFR3MultiEnvCreator()(
             name2ip=ROBOT2IP,
             camera_set=camera_set,
@@ -301,13 +300,14 @@ def main():
         # robot_cfg = default_sim_robot_cfg("fr3_empty_world")
         # sim_cfg = SimConfig()
         # sim_cfg.async_control = True
-        # twin_env, sim = SimMultiEnvCreator()(
+        # twin_env = SimMultiEnvCreator()(
         #     name2id=ROBOT2IP,
         #     robot_cfg=robot_cfg,
         #     control_mode=ControlMode.JOINTS,
         #     gripper_cfg=default_sim_gripper_cfg(),
         #     sim_cfg=sim_cfg,
         # )
+        # sim = env_rel.unwrapped.envs[ROBOT2IP.keys().__iter__().__next__()].sim
         # sim.open_gui()
         # MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
         # env_rel = DigitalTwin(env_rel, twin_env)
@@ -318,7 +318,7 @@ def main():
 
         sim_cfg = SimConfig()
         sim_cfg.async_control = True
-        env_rel, sim = SimMultiEnvCreator()(
+        env_rel = SimMultiEnvCreator()(
             name2id=ROBOT2IP,
             robot_cfg=robot_cfg,
             control_mode=ControlMode.CARTESIAN_TQuat,
@@ -328,12 +328,13 @@ def main():
             relative_to=RelativeTo.CONFIGURED_ORIGIN,
             sim_cfg=sim_cfg,
         )
+        sim = env_rel.unwrapped.envs[ROBOT2IP.keys().__iter__().__next__()].sim  # type: ignore
         sim.open_gui()
         MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
 
     env_rel.reset()
 
-    with env_rel, QuestReader(env_rel) as action_server:
+    with env_rel, QuestReader(env_rel) as action_server:  # type: ignore
         action_server.environment_step_loop()
 
 

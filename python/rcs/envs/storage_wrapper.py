@@ -70,14 +70,14 @@ class StorageWrapper(gym.Wrapper):
         self.basename_template = basename_template
         self.max_rows_per_group = max_rows_per_group
         self.max_rows_per_file = max_rows_per_file
-        self.buffer = []
+        self.buffer: list[dict[str, Any]] = []
         self.step_cnt = 0
         self._pause = True
         self.instruction = instruction
         self._success = start_record
         self._prev_action = None
         self.thread_pool = ThreadPoolExecutor()
-        self.queue = Queue(maxsize=2)
+        self.queue: Queue[pa.Table | pa.RecordBatch] = Queue(maxsize=2)
         self.uuid = uuid4()
         self._writer_future = self.thread_pool.submit(self._writer_worker)
 
@@ -146,7 +146,7 @@ class StorageWrapper(gym.Wrapper):
             if "frames" in obs:
                 self._encode_images(obs)
             self._flatten_arrays(obs)
-            if "success" in info and info["success"]:
+            if info.get("success"):
                 self.success()
             self.buffer.append(
                 {
