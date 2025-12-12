@@ -450,12 +450,12 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         reward /= 5  # type: ignore
         return obs, reward, success, truncated, info
 
+
 class DigitalTwin(gym.Wrapper):
 
     def __init__(self, env, twin_env):
         super().__init__(env)
         self.twin_env = twin_env
-
 
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
@@ -463,4 +463,3 @@ class DigitalTwin(gym.Wrapper):
         twin_obs, _, _, _, _ = self.twin_env.step(obs)
         info["twin_obs"] = twin_obs
         return obs, reward, terminated, truncated, info
-

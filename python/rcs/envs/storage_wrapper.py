@@ -1,14 +1,15 @@
 import operator
+from concurrent.futures import ThreadPoolExecutor, wait
+from itertools import chain
+from queue import Queue
 from typing import Any, Optional
 from uuid import uuid4
-from queue import Queue
-import pyarrow.dataset as ds
-import pyarrow as pa
-import numpy as np
-from itertools import chain
-import simplejpeg
-from concurrent.futures import ThreadPoolExecutor, wait
+
 import gymnasium as gym
+import numpy as np
+import pyarrow as pa
+import pyarrow.dataset as ds
+import simplejpeg
 
 
 class StorageWrapper(gym.Wrapper):
@@ -147,7 +148,17 @@ class StorageWrapper(gym.Wrapper):
             self._flatten_arrays(obs)
             if "success" in info and info["success"]:
                 self.success()
-            self.buffer.append({"obs": obs, "reward": reward, "step": self.step_cnt, "uuid": self.uuid.hex, "success": self._success, "action": self._prev_action, "instruction": self.instruction})
+            self.buffer.append(
+                {
+                    "obs": obs,
+                    "reward": reward,
+                    "step": self.step_cnt,
+                    "uuid": self.uuid.hex,
+                    "success": self._success,
+                    "action": self._prev_action,
+                    "instruction": self.instruction,
+                }
+            )
             self._prev_action = action
             self.step_cnt += 1
             if len(self.buffer) == self.batch_size:

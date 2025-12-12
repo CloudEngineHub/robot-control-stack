@@ -30,17 +30,17 @@ from simpub.xr_device.meta_quest3 import MetaQuest3
 
 logger = logging.getLogger(__name__)
 
-# in order to use usb connection install adb
-# sudo apt install android-tools-adb
 # download the iris apk from the following repo release: https://github.com/intuitive-robots/IRIS-Meta-Quest3
+# in order to use usb connection install adb install adb
+# sudo apt install android-tools-adb
 # install it on your quest with
 # adb install IRIS-Meta-Quest3.apk
 
 
 INCLUDE_ROTATION = True
 ROBOT2IP = {
-    "right": "192.168.101.1",
     "left": "192.168.102.1",
+    "right": "192.168.101.1",
 }
 
 
@@ -73,19 +73,17 @@ class MySimScene(SimScene):
 
 class QuestReader(threading.Thread):
 
-    transform_to_robot = Pose()  # RPY(roll=np.deg2rad(90), yaw=np.deg2rad(-90)))
+    transform_to_robot = Pose()
 
     def __init__(self, env: RelativeActionSpace):
         super().__init__()
-        # self._reader = oculus_reader.OculusReader()
-
         self._reader = MetaQuest3("RCSNode")
 
         self._resource_lock = threading.Lock()
         self._env_lock = threading.Lock()
         self._env = env
 
-        self.controller_names = ["left", "right"]
+        self.controller_names = ROBOT2IP.keys() if ROBOT_INSTANCE == RobotPlatform.HARDWARE else ["right"]
         self._trg_btn = {"left": "index_trigger", "right": "index_trigger"}
         self._grp_btn = {"left": "hand_trigger", "right": "hand_trigger"}
         self._start_btn = "A"
@@ -99,9 +97,6 @@ class QuestReader(threading.Thread):
         self._offset_pose = {key: Pose() for key in self.controller_names}
 
         for robot in ROBOT2IP:
-            # self._env.unwrapped.get_wrapper_attr("set_origin_to_current")[robot]()
-            # self._env.unwrapped.set_origin_to_current[robot]()
-            # self._env.unwrapped.envs[robot].set_origin_to_current()
             self._env.envs[robot].set_origin_to_current()
 
         self._step_env = False
@@ -154,16 +149,12 @@ class QuestReader(threading.Thread):
                 warning_raised = False
 
             # start recording
-            if input_data[self._start_btn] and (
-                self._prev_data is None or not self._prev_data[self._start_btn]
-            ):
+            if input_data[self._start_btn] and (self._prev_data is None or not self._prev_data[self._start_btn]):
                 print("start button pressed")
                 with self._env_lock:
                     self._env.get_wrapper_attr("start_record")()
 
-            if input_data[self._stop_btn] and (
-                self._prev_data is None or not self._prev_data[self._stop_btn]
-            ):
+            if input_data[self._stop_btn] and (self._prev_data is None or not self._prev_data[self._stop_btn]):
                 print("reset successful pressed: resetting env")
                 with self._env_lock:
                     # set successful
@@ -179,13 +170,16 @@ class QuestReader(threading.Thread):
                 with self._env_lock:
                     self._env.reset()
 
-
             for controller in self.controller_names:
                 last_controller_pose = Pose(
                     translation=np.array(input_data[controller]["pos"]),
                     quaternion=np.array(input_data[controller]["rot"]),
                 )
-
+                if controller == "left":
+                    last_controller_pose = (
+                        Pose(translation=np.array([0, 0, 0]), rpy=RPY(roll=0, pitch=0, yaw=np.deg2rad(180)))
+                        * last_controller_pose
+                    )
 
                 if input_data[controller][self._trg_btn[controller]] and (
                     self._prev_data is None or not self._prev_data[controller][self._trg_btn[controller]]
@@ -296,23 +290,27 @@ def main():
             max_relative_movement=(0.5, np.deg2rad(90)),
             relative_to=RelativeTo.CONFIGURED_ORIGIN,
         )
-        env_rel = StorageWrapper(env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000)
-        # MySimPublisher(MySimScene(), MQ3_ADDR)
-
-        robot_cfg = default_sim_robot_cfg("fr3_empty_world")
-        sim_cfg = SimConfig()
-        sim_cfg.async_control = True
-        twin_env, sim = SimMultiEnvCreator()(
-            name2id=ROBOT2IP,
-            robot_cfg=robot_cfg,
-            control_mode=ControlMode.JOINTS,
-            gripper_cfg=default_sim_gripper_cfg(),
-            sim_cfg=sim_cfg,
+        env_rel = StorageWrapper(
+            env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000
         )
-        sim.open_gui()
-        MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
-        env_rel = DigitalTwin(env_rel, twin_env)
+        MySimPublisher(MySimScene(), MQ3_ADDR)
 
+        # DIGITAL TWIN: comment out the line above and uncomment the lines below to use a digital twin
+        # Note: only supported for one arm at the moment
+
+        # robot_cfg = default_sim_robot_cfg("fr3_empty_world")
+        # sim_cfg = SimConfig()
+        # sim_cfg.async_control = True
+        # twin_env, sim = SimMultiEnvCreator()(
+        #     name2id=ROBOT2IP,
+        #     robot_cfg=robot_cfg,
+        #     control_mode=ControlMode.JOINTS,
+        #     gripper_cfg=default_sim_gripper_cfg(),
+        #     sim_cfg=sim_cfg,
+        # )
+        # sim.open_gui()
+        # MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
+        # env_rel = DigitalTwin(env_rel, twin_env)
 
     else:
         # FR3

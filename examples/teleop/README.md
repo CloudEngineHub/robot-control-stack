@@ -15,3 +15,29 @@ Finally, install [SimPub](https://github.com/intuitive-robots/SimPublisher) the 
 pip install -r requirements.txt
 ```
 
+## Configuration
+
+### Teleoperating in sim
+
+1. go to [`quest_iris_dual_arm.py`](quest_iris_dual_arm.py) and set `ROBOT_INSTANCE = RobotPlatform.SIMULATION`
+
+### Teleoperating a real robot
+Note that dual arm is only supported for a aloha like setup where the robot face each other (for more advanced setups you need to change the transformation between the robots yourself).
+1. put your robots into FCI mode
+2. go to [`quest_iris_dual_arm.py`](quest_iris_dual_arm.py), set `ROBOT_INSTANCE = RobotPlatform.HARDWARE` and set your IP addresses of your robots. Remove the left robot if you only have one.
+
+
+## Running
+1. make sure your computer and quest is in the same subnetwork and they can ping each other.
+2. start IRIS meta quest app on your quest (it should be located in the Library under "Unkown Sources" after installation)
+3. run the [`quest_align_frame.py`](quest_align_frame.py) script once. Navigate to the link printed on the top likly [http://127.0.0.1:7000](http://127.0.0.1:7000).
+    - click scan
+    - your meta quest should show up
+    - click change name and type "RCSNode" and click ok
+    - the script should now print a bunch of numbers (the controller poses)
+4. put on your quest (dont remove it until done with teleop, otherwise the axis might change and you need to recalibrate), you should see a white ball with coordinate axis somewhere in your room (red is x, green is y and blue is z)
+5. use the right controller to change the orientation of the coordinate axis to fit your right robot (for franka: x front, y left, z up)
+6. click the "teleportation scene" button on the still open website
+7. cancel the script
+8. start the teleoperation script [`quest_iris_dual_arm.py`](quest_iris_dual_arm.py) and enjoy.
+

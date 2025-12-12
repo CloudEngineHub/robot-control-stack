@@ -1,2 +1,1 @@
-oculus_reader @ git+https://github.com/rail-berkeley/oculus_reader.git@c52b4b6193879b6cf32a1db1bd5727652626f00d
 simpub @ git+https://github.com/intuitive-robots/SimPublisher.git
