@@ -80,10 +80,16 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
         offset_cartesian_target = offset_joint_target + 48
         offset_joint_state = offset_cartesian_target + 48
         offset_cartesian_state = offset_joint_state + 48
-        joint_target_view = np.ndarray((6,), dtype=np.float64, buffer=data_buffer, offset=offset_joint_target)
-        cartesian_target_view = np.ndarray((6,), dtype=np.float64, buffer=data_buffer, offset=offset_cartesian_target)
-        joint_state_view = np.ndarray((6,), dtype=np.float64, buffer=data_buffer, offset=offset_joint_state)
-        cartesian_state_view = np.ndarray((6,), dtype=np.float64, buffer=data_buffer, offset=offset_cartesian_state)
+        joint_target_view: np.ndarray = np.ndarray(
+            (6,), dtype=np.float64, buffer=data_buffer, offset=offset_joint_target
+        )
+        cartesian_target_view: np.ndarray = np.ndarray(
+            (6,), dtype=np.float64, buffer=data_buffer, offset=offset_cartesian_target
+        )
+        joint_state_view: np.ndarray = np.ndarray((6,), dtype=np.float64, buffer=data_buffer, offset=offset_joint_state)
+        cartesian_state_view: np.ndarray = np.ndarray(
+            (6,), dtype=np.float64, buffer=data_buffer, offset=offset_cartesian_state
+        )
 
         print("Robot control process started.")
 
@@ -123,9 +129,9 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 
             elif mode == ControlMode.CARTESIAN_MODE:
                 rotvec = common.RotVec(np.array(cartesian_target_view[3:6]))
-                a = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_target_view[:3])
+                a = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_target_view[:3])  # type: ignore
                 rotvec = common.RotVec(np.array(cartesian_state_view[3:6]))
-                b = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_state_view[:3])
+                b = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_state_view[:3])  # type: ignore
                 diff = b * a.inverse()
                 diff.limit_rotation_angle(np.deg2rad(0.01)).limit_translation_length(0.008)
                 target = a * diff
@@ -180,16 +186,16 @@ class UR5e(common.Robot):
         self._offset_cartesian_target = self._offset_joint_target + 48
         self._offset_joint_state = self._offset_cartesian_target + 48
         self._offset_cartesian_state = self._offset_joint_state + 48
-        self._joint_target_shm = np.ndarray(
+        self._joint_target_shm: np.ndarray = np.ndarray(
             (6,), dtype=np.float64, buffer=self._shm_buffer, offset=self._offset_joint_target
         )
-        self._cartesian_target_shm = np.ndarray(
+        self._cartesian_target_shm: np.ndarray = np.ndarray(
             (6,), dtype=np.float64, buffer=self._shm_buffer, offset=self._offset_cartesian_target
         )
-        self._joint_state_shm = np.ndarray(
+        self._joint_state_shm: np.ndarray = np.ndarray(
             (6,), dtype=np.float64, buffer=self._shm_buffer, offset=self._offset_joint_state
         )
-        self._cartesian_state_shm = np.ndarray(
+        self._cartesian_state_shm: np.ndarray = np.ndarray(
             (6,), dtype=np.float64, buffer=self._shm_buffer, offset=self._offset_cartesian_state
         )
 
@@ -227,9 +233,9 @@ class UR5e(common.Robot):
         ur_pose = self._cartesian_state_shm
         trans = ur_pose[0:3]
         rotvec = common.RotVec(np.array(ur_pose[3:6]))
-        pose = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=trans)
+        pose = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=trans)  # type: ignore
         return (
-            common.Pose(rpy_vector=np.array([0, 0, np.deg2rad(180)]), translation=np.array([0, 0, 0])).inverse() * pose
+            common.Pose(rpy_vector=np.array([0, 0, np.deg2rad(180)]), translation=np.array([0, 0, 0])).inverse() * pose  # type: ignore
         )
 
     def get_ik(self) -> common.Kinematics | None:

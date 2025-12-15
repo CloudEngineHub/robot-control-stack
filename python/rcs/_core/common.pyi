@@ -324,6 +324,7 @@ class RotVec:
     def rotation_matrix(
         self,
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
+
 class Pin(Kinematics):
     def __init__(self, path: str, frame_id: str = "fr3_link8", urdf: bool = True) -> None: ...
 

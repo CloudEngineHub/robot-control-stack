@@ -51,7 +51,7 @@ def main():
 
         gripper_config = sim.SimGripperConfig()
         gripper_config.actuator = "fingers_actuator"
-        gripper_config.joint = "right_driver_joint"
+        gripper_config.joints = ["right_driver_joint"]
         gripper_config.collision_geoms = []
         gripper_config.collision_geoms_fingers = []
 
