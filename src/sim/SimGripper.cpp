@@ -10,8 +10,8 @@
 namespace rcs {
 namespace sim {
 
-SimGripper::SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig &cfg)
-    : sim{sim}, cfg{cfg} {
+SimGripper::SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig& cfg)
+    : sim{sim}, cfg{cfg}, joint_ids{} {
   this->state = SimGripperState();
   this->actuator_id =
       mj_name2id(this->sim->m, mjOBJ_ACTUATOR, this->cfg.actuator.c_str());
@@ -19,12 +19,14 @@ SimGripper::SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig &cfg)
     throw std::runtime_error(
         std::string("No actuator named " + this->cfg.actuator));
   }
-  // this->tendon_id =
-  //     mj_name2id(this->sim->m, mjOBJ_TENDON, ("split_" + id).c_str());
-  this->joint_id = this->sim->m->jnt_qposadr[mj_name2id(
-      this->sim->m, mjOBJ_JOINT, this->cfg.joint.c_str())];
-  if (this->joint_id == -1) {
-    throw std::runtime_error(std::string("No joint named " + this->cfg.joint));
+  std::string name;
+  for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
+    name = this->cfg.joints[i];
+    this->joint_ids.push_back(
+        mj_name2id(this->sim->m, mjOBJ_JOINT, name.c_str()));
+    if (this->joint_ids[i] == -1) {
+      throw std::runtime_error(std::string("No joint named " + name));
+    }
   }
   // Collision geoms
   this->add_collision_geoms(this->cfg.collision_geoms, this->cgeom, false);
@@ -40,8 +42,8 @@ SimGripper::SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig &cfg)
 
 SimGripper::~SimGripper() {}
 
-void SimGripper::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
-                                     std::set<size_t> &cgeoms_set,
+void SimGripper::add_collision_geoms(const std::vector<std::string>& cgeoms_str,
+                                     std::set<size_t>& cgeoms_set,
                                      bool clear_before) {
   if (clear_before) {
     cgeoms_set.clear();
@@ -57,22 +59,22 @@ void SimGripper::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
   }
 }
 
-bool SimGripper::set_config(const SimGripperConfig &cfg) {
+bool SimGripper::set_config(const SimGripperConfig& cfg) {
   this->cfg = cfg;
   this->add_collision_geoms(cfg.ignored_collision_geoms,
                             this->ignored_collision_geoms, true);
   return true;
 }
 
-SimGripperConfig *SimGripper::get_config() {
+SimGripperConfig* SimGripper::get_config() {
   // copy config to heap
-  SimGripperConfig *cfg = new SimGripperConfig();
+  SimGripperConfig* cfg = new SimGripperConfig();
   *cfg = this->cfg;
   return cfg;
 }
 
-SimGripperState *SimGripper::get_state() {
-  SimGripperState *state = new SimGripperState();
+SimGripperState* SimGripper::get_state() {
+  SimGripperState* state = new SimGripperState();
   *state = this->state;
   return state;
 }
@@ -93,8 +95,11 @@ void SimGripper::set_normalized_width(double width, double force) {
 double SimGripper::get_normalized_width() {
   // TODO: maybe we should use the mujoco sensors? Not sure what the difference
   // is between reading out from qpos and reading from the sensors.
+  if (this->joint_ids.size() == 0) {
+    throw std::invalid_argument("No joint ids for gripper available.");
+  }
   double width =
-      (this->sim->d->qpos[this->joint_id] - this->cfg.min_joint_width) /
+      (this->sim->d->qpos[this->joint_ids[0]] - this->cfg.min_joint_width) /
       (this->cfg.max_joint_width - this->cfg.min_joint_width);
   // sometimes the joint is slightly outside of the bounds
   if (width < 0) {
@@ -106,7 +111,6 @@ double SimGripper::get_normalized_width() {
 }
 
 bool SimGripper::collision_callback() {
-  this->state.collision = false;
   for (size_t i = 0; i < this->sim->d->ncon; ++i) {
     if (this->cfgeom.contains(this->sim->d->contact[i].geom[0]) &&
         this->cfgeom.contains(this->sim->d->contact[i].geom[1])) {
@@ -119,7 +123,7 @@ bool SimGripper::collision_callback() {
         // ignore all collision with ignored objects with frankahand
         // not just fingers
         not(this->ignored_collision_geoms.contains(
-                this->sim->d->contact[i].geom[1]) or
+                this->sim->d->contact[i].geom[0]) or
             this->ignored_collision_geoms.contains(
                 this->sim->d->contact[i].geom[1]))) {
       this->state.collision = true;
@@ -128,6 +132,8 @@ bool SimGripper::collision_callback() {
   }
   return this->state.collision;
 }
+
+void SimGripper::clear_collision_flag() { this->state.collision = false; }
 
 bool SimGripper::is_grasped() {
   double width = this->get_normalized_width();
@@ -158,7 +164,10 @@ void SimGripper::shut() { this->set_normalized_width(0); }
 void SimGripper::m_reset() {
   this->state = SimGripperState();
   // reset state hard
-  this->sim->d->qpos[this->joint_id] = this->cfg.max_joint_width;
+  this->state.last_width = 1.0;
+  for (size_t i = 0; i < this->joint_ids.size(); ++i) {
+    this->sim->d->qpos[this->joint_ids[i]] = this->cfg.max_joint_width;
+  }
   this->sim->d->ctrl[this->actuator_id] = this->cfg.max_actuator_width;
 }
 

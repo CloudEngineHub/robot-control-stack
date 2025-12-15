@@ -25,6 +25,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -48,12 +49,6 @@ find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 
-FetchContent_Declare(rl
-    GIT_REPOSITORY https://github.com/roboticslibrary/rl.git
-    GIT_TAG 0b3797215345a1d37903634095361233d190b2e6
-    GIT_PROGRESS TRUE
-    EXCLUDE_FROM_ALL
-)
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
@@ -68,6 +63,6 @@ FetchContent_Declare(pybind11
     EXCLUDE_FROM_ALL
 )
 
-FetchContent_MakeAvailable(rl libfranka pybind11)
+FetchContent_MakeAvailable(libfranka pybind11)
 
 add_subdirectory(src)

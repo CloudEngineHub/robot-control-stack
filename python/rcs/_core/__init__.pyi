@@ -15,5 +15,5 @@ from __future__ import annotations
 
 from . import common, sim
 
-__all__ = ["common", "sim"]
+__all__: list[str] = ["common", "sim"]
 __version__: str = "0.5.2"

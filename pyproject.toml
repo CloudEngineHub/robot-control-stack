@@ -19,14 +19,17 @@ dependencies = ["websockets>=11.0",
     "pillow~=10.3",
     "python-dotenv==1.0.1",
     "opencv-python~=4.10.0.84",
-    # NOTE: when changing the mujoco version, also change it in requirements_dev.txt
+    # NOTE: when changing the mujoco version, also change it in requirements.txt
     "mujoco==3.2.6",
     # NOTE: Same for pinocchio (pin)
     "pin==3.7.0",
     "tilburg-hand",
     "digit-interface",
+    "pyopengl>=3.1.9",
     "ompl>=1.7.0",
     "rpyc==6.0.2",
+    "pyarrow",
+    "simplejpeg",
 ]
 readme = "README.md"
 maintainers = [
@@ -39,15 +42,22 @@ authors = [
 requires-python = ">=3.10"
 license = "AGPL-3.0-or-later"
 
-# until https://github.com/pypa/pip/issues/11440 is resolved
-# we use requirements_dev.txt for linter and formatter dependencies
-# [project.optional-dependencies]
-# dev = [
-#     "ruff==0.3.2",
-#     "black==24.1.1",
-#     "isort==5.13.2",
-#     "mypy==1.4.1",
-# ]
+[project.optional-dependencies]
+dev = [
+    "ruff==0.3.2",
+    "black==24.1.1",
+    "isort==5.13.2",
+    "mypy==1.10.1",
+    "types-requests~=2.31",
+    # temporarily use fixed version until PR #275 is merged
+    # pybind11-stubgen==2.5.5
+    "pybind11-stubgen @ git+https://github.com/juelg/pybind11-stubgen@fix/class-sorting",
+    "pytest==8.1.1",
+    "commitizen~=3.28.0",
+    "clang",
+    "clang-format",
+    "clang-tidy",
+]
 
 
 [tool.scikit-build]
@@ -148,6 +158,10 @@ version_files = [
     "extensions/rcs_fr3/CMakeLists.txt:VERSION",
     "extensions/rcs_fr3/src/rcs_fr3/_core/__init__.pyi:__version__",
     "extensions/rcs_fr3/pyproject.toml:version",
+
+    "extensions/rcs_panda/CMakeLists.txt:VERSION",
+    "extensions/rcs_panda/src/rcs_fr3/_core/__init__.pyi:__version__",
+    "extensions/rcs_panda/pyproject.toml:version",
 
     "extensions/rcs_robotics_library/CMakeLists.txt:VERSION",
     "extensions/rcs_robotics_library/src/rcs_robotics_library/_core/__init__.pyi:__version__",

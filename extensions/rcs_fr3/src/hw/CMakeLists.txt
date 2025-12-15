@@ -1,9 +1,8 @@
 add_library(hw)
-target_sources(hw PRIVATE FR3.cpp FrankaHand.cpp FR3MotionGenerator.cpp)
+target_sources(hw PRIVATE Franka.cpp FrankaHand.cpp FrankaMotionGenerator.cpp)
 target_link_libraries(
   hw
-  PUBLIC franka rcs pinocchio::all
-  PRIVATE math
+  PUBLIC franka rcs pinocchio::all Eigen3::Eigen
 )
 
 # add_executable(test_hw main.cpp)

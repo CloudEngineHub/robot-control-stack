@@ -131,6 +131,10 @@ void SimRobot::set_joint_position(const common::VectorXd& q) {
 }
 
 common::VectorXd SimRobot::get_joint_position() {
+  return m_get_joint_position();
+}
+
+common::VectorXd SimRobot::m_get_joint_position() {
   common::VectorXd q(std::size(this->cfg.joints));
   for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
     q[i] = this->sim->d->qpos[this->sim->m->jnt_qposadr[this->ids.joints[i]]];
@@ -170,7 +174,6 @@ void SimRobot::is_arrived_callback() {
 }
 
 bool SimRobot::collision_callback() {
-  this->state.collision = false;
   for (size_t i = 0; i < this->sim->d->ncon; ++i) {
     if (this->ids.cgeom.contains(this->sim->d->contact[i].geom[0]) ||
         this->ids.cgeom.contains(this->sim->d->contact[i].geom[1])) {
@@ -180,6 +183,8 @@ bool SimRobot::collision_callback() {
   }
   return this->state.collision;
 }
+
+void SimRobot::clear_collision_flag() { this->state.collision = false; }
 
 bool SimRobot::convergence_callback() {
   /* When ik failed, the robot is not doing anything */
@@ -191,9 +196,13 @@ bool SimRobot::convergence_callback() {
 }
 
 void SimRobot::m_reset() {
-  auto q = common::robots_meta_config.at(this->cfg.robot_type).q_home;
-  // this->set_joints_hard(q);
-  this->set_joint_position(q);
+  this->state = SimRobotState();
+  this->set_joints_hard(
+      common::robots_meta_config.at(this->cfg.robot_type).q_home);
+  this->state.previous_angles = this->m_get_joint_position();
+  this->state.target_angles = this->m_get_joint_position();
+  this->state.is_arrived = true;
+  this->state.is_moving = false;
 }
 
 void SimRobot::set_joints_hard(const common::VectorXd& q) {

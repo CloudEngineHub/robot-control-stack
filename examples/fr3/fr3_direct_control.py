@@ -5,7 +5,7 @@ from rcs._core.common import RobotPlatform
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs_fr3._core import hw
-from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
+from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_franka_desk
 
 import rcs
 from rcs import sim
@@ -26,8 +26,8 @@ to the home position.
 
 
 Create a .env file in the same directory as this file with the following content:
-FR3_USERNAME=<username on franka desk>
-FR3_PASSWORD=<password on franka desk>
+DESK_USERNAME=<username on franka desk>
+DESK_PASSWORD=<password on franka desk>
 
 When you use a real FR3 you first need to unlock its joints using the following cli script:
 
@@ -50,7 +50,7 @@ python -m rcs_fr3 shutdown <ip>
 def main():
     context_manger: FCI | ContextManager
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        user, pw = load_creds_fr3_desk()
+        user, pw = load_creds_franka_desk()
         context_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
         context_manger = ContextManager()
@@ -100,7 +100,7 @@ def main():
                 mjcf_path,
                 "attachment_site_0",
             )
-            robot = hw.FR3(ROBOT_IP, ik)
+            robot = hw.Franka(ROBOT_IP, ik)
             robot_cfg = hw.FR3Config()
             robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
             robot_cfg.ik_solver = hw.IKSolver.rcs_ik

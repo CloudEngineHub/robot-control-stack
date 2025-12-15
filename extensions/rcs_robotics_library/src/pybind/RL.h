@@ -6,6 +6,7 @@
 #include <rcs/utils.h>
 #include <rl/mdl/Dynamic.h>
 #include <rl/mdl/JacobianInverseKinematics.h>
+#include <rl/mdl/UrdfFactory.h>
 
 #include <eigen3/Eigen/Eigen>
 #include <eigen3/Eigen/Geometry>

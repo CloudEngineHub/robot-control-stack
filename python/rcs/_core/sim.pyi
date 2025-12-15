@@ -9,7 +9,7 @@ import typing
 import numpy
 import rcs._core.common
 
-__all__ = [
+__all__: list[str] = [
     "CameraType",
     "FrameSet",
     "GuiClient",
@@ -118,6 +118,7 @@ class SimConfig:
 
 class SimGripper(rcs._core.common.Gripper):
     def __init__(self, sim: Sim, cfg: SimGripperConfig) -> None: ...
+    def clear_collision_flag(self) -> None: ...
     def get_config(self) -> SimGripperConfig: ...
     def get_state(self) -> SimGripperState: ...
     def set_config(self, cfg: SimGripperConfig) -> bool: ...
@@ -129,7 +130,7 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
     epsilon_inner: float
     epsilon_outer: float
     ignored_collision_geoms: list[str]
-    joint: str
+    joints: list[str]
     max_actuator_width: float
     max_joint_width: float
     min_actuator_width: float
@@ -153,6 +154,7 @@ class SimRobot(rcs._core.common.Robot):
     def __init__(
         self, sim: Sim, ik: rcs._core.common.Kinematics, cfg: SimRobotConfig, register_convergence_callback: bool = True
     ) -> None: ...
+    def clear_collision_flag(self) -> None: ...
     def get_config(self) -> SimRobotConfig: ...
     def get_state(self) -> SimRobotState: ...
     def set_config(self, cfg: SimRobotConfig) -> bool: ...

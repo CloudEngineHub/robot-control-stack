@@ -401,7 +401,7 @@ class RelativeActionSpace(gym.ActionWrapper):
                 max_mov = self.DEFAULT_MAX_JOINT_MOV
             assert isinstance(
                 max_mov, float
-            ), "in cartesian control max_mov must be a float representing the maximum allowed rotation (in rad)."
+            ), "in joint control max_mov must be a float representing the maximum allowed rotation (in rad)."
             if max_mov > np.deg2rad(180):
                 _logger.warning(
                     "maximal movement is set higher to a value higher than 180 degree, which is really high, consider setting it lower"
@@ -687,7 +687,7 @@ class GripperWrapper(ActObsInfoWrapper):
     BINARY_GRIPPER_CLOSED = 0
     BINARY_GRIPPER_OPEN = 1
 
-    def __init__(self, env, gripper: common.Gripper, binary: bool = True, open_on_reset: bool = True):
+    def __init__(self, env, gripper: common.Gripper, binary: bool = True):
         super().__init__(env)
         self.unwrapped: RobotEnv
         self.observation_space: gym.spaces.Dict
@@ -698,12 +698,13 @@ class GripperWrapper(ActObsInfoWrapper):
         self.gripper = gripper
         self.binary = binary
         self._last_gripper_cmd = None
-        self.open_on_reset = open_on_reset
+
+    def close(self):
+        self.gripper.close()
+        super().close()
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
-        if self.open_on_reset:
-            # resetting opens the gripper
-            self.gripper.reset()
+        self.gripper.reset()
         self._last_gripper_cmd = None
         return super().reset(**kwargs)
 

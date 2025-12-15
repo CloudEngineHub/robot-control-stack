@@ -28,19 +28,28 @@ in this file under the unit's IP address or hostname.
 """
 
 
-def load_creds_fr3_desk() -> tuple[str, str]:
+def load_creds_franka_desk(postfix: str = "") -> tuple[str, str]:
+    """Loads the FR3 Desk credentials from a .env file.
+
+    The keys in the .env file are expected to be DESK_USERNAME and DESK_PASSWORD.
+
+    If you have multiple robots with multiple credentials, you can specify a postfix
+    which is appended to the keys, e.g. for postfix "1" the keys would be DESK_USERNAME_1 and DESK_PASSWORD_1.
+    """
     load_dotenv()
-    assert "DESK_USERNAME" in os.environ, "DESK_USERNAME not set in .env file or environment var."
-    assert "DESK_PASSWORD" in os.environ, "DESK_PASSWORD not set in .env file or environment var."
-    return os.environ["DESK_USERNAME"], os.environ["DESK_PASSWORD"]
+    username_key = f"DESK_USERNAME_{postfix}" if postfix else "DESK_USERNAME"
+    password_key = f"DESK_PASSWORD_{postfix}" if postfix else "DESK_PASSWORD"
+
+    assert username_key in os.environ, f"{username_key} not set in .env file or environment var."
+    assert password_key in os.environ, f"{password_key} not set in .env file or environment var."
+    return os.environ[username_key], os.environ[password_key]
 
 
 def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False):
     with Desk.fci(ip, username, password, unlock=unlock):
-        f = rcs_fr3.hw.FR3(ip)
+        f = rcs_fr3.hw.Franka(ip)
         config = rcs_fr3.hw.FR3Config()
         config.speed_factor = 0.2
-        config.ik_solver = rcs_fr3.hw.IKSolver.franka_ik
         f.set_config(config)
         config_hand = rcs_fr3.hw.FHConfig()
         g = rcs_fr3.hw.FrankaHand(ip, config_hand)
@@ -53,7 +62,7 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
 
 def info(ip: str, username: str, password: str, include_hand: bool = False):
     with Desk.fci(ip, username, password):
-        f = rcs_fr3.hw.FR3(ip)
+        f = rcs_fr3.hw.Franka(ip)
         config = rcs_fr3.hw.FR3Config()
         f.set_config(config)
         print("Robot info:")
@@ -518,7 +527,11 @@ class FCI(ContextManager):
     """
 
     def __init__(
-        self, desk: Desk, unlock: bool = False, lock_when_done: bool = True, guiding_mode_when_done: bool = True
+        self,
+        desk: Desk,
+        unlock: bool = False,
+        lock_when_done: bool = True,
+        guiding_mode_when_done: bool = True,
     ):
         self.desk = desk
         self.unlock = unlock

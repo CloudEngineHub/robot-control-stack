@@ -63,14 +63,20 @@ scenes: dict[str, Scene] = {
         mjcf_scene=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "xarm7_empty_world", "scene.xml"),
         mjcf_robot=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "xarm7_empty_world", "robot.xml"),
         urdf=get_scene_urdf("xarm7_empty_world"),
-        robot_type=common.RobotType.FR3,
+        robot_type=common.RobotType.XArm7,
+    ),
+    "panda_empty_world": Scene(
+        mjb=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "panda_empty_world", "scene.mjb"),
+        mjcf_scene=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "panda_empty_world", "scene.xml"),
+        mjcf_robot=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "panda_empty_world", "robot.xml"),
+        robot_type=common.RobotType.Panda,
     ),
     "so101_empty_world": Scene(
         mjb=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "so101_empty_world", "scene.mjb"),
         mjcf_scene=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "so101_empty_world", "scene.xml"),
         mjcf_robot=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "so101_empty_world", "robot.xml"),
         urdf=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "so101_empty_world", "robot.urdf"),
-        robot_type=common.RobotType.FR3,
+        robot_type=common.RobotType.SO101,
     ),
     "ur5e_empty_world": Scene(
         mjb=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "ur5e_empty_world", "scene.mjb"),

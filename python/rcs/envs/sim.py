@@ -47,7 +47,7 @@ class RobotSimWrapper(gym.Wrapper):
         self.frame_rate = SimpleFrameRate(1 / cfg.frequency, "RobotSimWrapper")
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
-        _, _, _, _, info = super().step(action)
+        obs, _, _, _, info = super().step(action)
         cfg = self.sim.get_config()
         if cfg.async_control:
             self.sim.step(round(1 / cfg.frequency / self.sim.model.opt.timestep))
@@ -56,23 +56,27 @@ class RobotSimWrapper(gym.Wrapper):
                 self.frame_rate()
 
         else:
+            self.sim_robot.clear_collision_flag()
             self.sim.step_until_convergence()
         state = self.sim_robot.get_state()
-        info["collision"] = state.collision
+        if "collision" not in info:
+            info["collision"] = state.collision
+        else:
+            info["collision"] = info["collision"] or state.collision
         info["ik_success"] = state.ik_success
         info["is_sim_converged"] = self.sim.is_converged()
         # truncate episode if collision
-
-        return dict(self.unwrapped.get_obs()), 0, False, state.collision or not state.ik_success, info
+        obs.update(self.unwrapped.get_obs())
+        return obs, 0, False, info["collision"] or not state.ik_success, info
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim.reset()
-        _, info = super().reset(seed=seed, options=options)
-        # self.unwrapped.robot.move_home()
+        obs, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
-        obs = cast(dict, self.unwrapped.get_obs())
+        # todo: an obs method that is recursive over wrappers would be needed
+        obs.update(self.unwrapped.get_obs())
         return obs, info
 
 
@@ -121,6 +125,10 @@ class GripperWrapperSim(ActObsInfoWrapper):
     def __init__(self, env, gripper: sim.SimGripper):
         super().__init__(env)
         self._gripper = gripper
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        self._gripper.clear_collision_flag()
+        return action
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         state = self._gripper.get_state()
@@ -441,3 +449,17 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         # normalize
         reward /= 5  # type: ignore
         return obs, reward, success, truncated, info
+
+
+class DigitalTwin(gym.Wrapper):
+
+    def __init__(self, env, twin_env):
+        super().__init__(env)
+        self.twin_env = twin_env
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = super().step(action)
+
+        twin_obs, _, _, _, _ = self.twin_env.step(obs)
+        info["twin_obs"] = twin_obs
+        return obs, reward, terminated, truncated, info

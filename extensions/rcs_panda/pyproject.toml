@@ -1,0 +1,35 @@
+[build-system]
+requires = []
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "rcs_panda"
+version = "0.5.2"
+description="RCS libfranka integration"
+dependencies = [
+    "rcs>=0.5.0",
+]
+readme = "README.md"
+maintainers = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+]
+authors = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+]
+requires-python = ">=3.10"
+
+
+[tool.scikit-build]
+build.verbose = true
+build.targets = ["_core"]
+logging.level = "INFO"
+build-dir = "build"
+wheel.packages = ["src/rcs_panda"]
+install.components = ["python_package"]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"

@@ -9,7 +9,7 @@ import typing
 import numpy
 import pybind11_stubgen.typing_ext
 
-__all__ = [
+__all__: list[str] = [
     "BaseCameraConfig",
     "FR3",
     "FrankaHandTCPOffset",
@@ -28,6 +28,7 @@ __all__ = [
     "LATERAL_GRASP",
     "POWER_GRASP",
     "PRECISION_GRASP",
+    "Panda",
     "Pin",
     "Pose",
     "RPY",
@@ -133,9 +134,6 @@ class Kinematics:
     def inverse(
         self, pose: Pose, q0: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], tcp_offset: Pose = ...
     ) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None: ...
-
-class Pin(Kinematics):
-    def __init__(self, path: str, frame_id: str = "fr3_link8", urdf: bool = True) -> None: ...
 
 class Pose:
     def __getstate__(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(16)]: ...
@@ -290,15 +288,18 @@ class RobotType:
       SO101
 
       XArm7
+
+      Panda
     """
 
     FR3: typing.ClassVar[RobotType]  # value = <RobotType.FR3: 0>
+    Panda: typing.ClassVar[RobotType]  # value = <RobotType.Panda: 4>
     SO101: typing.ClassVar[RobotType]  # value = <RobotType.SO101: 2>
     UR5e: typing.ClassVar[RobotType]  # value = <RobotType.UR5e: 1>
     XArm7: typing.ClassVar[RobotType]  # value = <RobotType.XArm7: 3>
     __members__: typing.ClassVar[
         dict[str, RobotType]
-    ]  # value = {'FR3': <RobotType.FR3: 0>, 'UR5e': <RobotType.UR5e: 1>, 'SO101': <RobotType.SO101: 2>, 'XArm7': <RobotType.XArm7: 3>}
+    ]  # value = {'FR3': <RobotType.FR3: 0>, 'UR5e': <RobotType.UR5e: 1>, 'SO101': <RobotType.SO101: 2>, 'XArm7': <RobotType.XArm7: 3>, 'Panda': <RobotType.Panda: 4>}
     def __eq__(self, other: typing.Any) -> bool: ...
     def __getstate__(self) -> int: ...
     def __hash__(self) -> int: ...
@@ -323,6 +324,8 @@ class RotVec:
     def rotation_matrix(
         self,
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
+class Pin(Kinematics):
+    def __init__(self, path: str, frame_id: str = "fr3_link8", urdf: bool = True) -> None: ...
 
 def FrankaHandTCPOffset() -> numpy.ndarray[tuple[typing.Literal[4], typing.Literal[4]], numpy.dtype[numpy.float64]]: ...
 def IdentityRotMatrix() -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
@@ -336,6 +339,7 @@ HARDWARE: RobotPlatform  # value = <RobotPlatform.HARDWARE: 1>
 LATERAL_GRASP: GraspType  # value = <GraspType.LATERAL_GRASP: 2>
 POWER_GRASP: GraspType  # value = <GraspType.POWER_GRASP: 0>
 PRECISION_GRASP: GraspType  # value = <GraspType.PRECISION_GRASP: 1>
+Panda: RobotType  # value = <RobotType.Panda: 4>
 SIMULATION: RobotPlatform  # value = <RobotPlatform.SIMULATION: 0>
 SO101: RobotType  # value = <RobotType.SO101: 2>
 TRIPOD_GRASP: GraspType  # value = <GraspType.TRIPOD_GRASP: 3>

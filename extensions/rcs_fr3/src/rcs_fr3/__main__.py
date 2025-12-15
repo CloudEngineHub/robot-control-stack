@@ -4,7 +4,7 @@ from typing import Annotated
 
 import rcs_fr3
 import typer
-from rcs_fr3.desk import load_creds_fr3_desk
+from rcs_fr3.desk import load_creds_franka_desk
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def home(
     unlock: Annotated[bool, typer.Option("-u", help="unlocks the robot")] = False,
 ):
     """Moves the FR3 to home position"""
-    user, pw = load_creds_fr3_desk()
+    user, pw = load_creds_franka_desk()
     rcs_fr3.desk.home(ip, user, pw, shut, unlock)
 
 
@@ -35,7 +35,7 @@ def info(
     include_gripper: Annotated[bool, typer.Option("-g", help="includes gripper")] = False,
 ):
     """Prints info about the robots current joint position and end effector pose, optionally also the gripper."""
-    user, pw = load_creds_fr3_desk()
+    user, pw = load_creds_franka_desk()
     rcs_fr3.desk.info(ip, user, pw, include_gripper)
 
 
@@ -44,7 +44,7 @@ def lock(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
 ):
     """Locks the robot."""
-    user, pw = load_creds_fr3_desk()
+    user, pw = load_creds_franka_desk()
     rcs_fr3.desk.lock(ip, user, pw)
 
 
@@ -53,7 +53,7 @@ def unlock(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
 ):
     """Prepares the robot by unlocking the joints and putting the robot into the FCI mode."""
-    user, pw = load_creds_fr3_desk()
+    user, pw = load_creds_franka_desk()
     rcs_fr3.desk.unlock(ip, user, pw)
     with rcs_fr3.desk.Desk(ip, user, pw) as d:
         d.activate_fci()
@@ -66,7 +66,7 @@ def fci(
     shutdown: Annotated[bool, typer.Option("-s", help="After ctrl+c shuts the robot down")] = False,
 ):
     """Puts the robot into FCI mode, optionally unlocks the robot. Waits for ctrl+c to exit."""
-    user, pw = load_creds_fr3_desk()
+    user, pw = load_creds_franka_desk()
     try:
         with rcs_fr3.desk.FCI(rcs_fr3.desk.Desk(ip, user, pw), unlock=unlock, lock_when_done=False):
             while True:
@@ -83,7 +83,7 @@ def guiding_mode(
     unlock: Annotated[bool, typer.Option("-u", help="unlocks the robot")] = False,
 ):
     """Enables or disables guiding mode."""
-    user, pw = load_creds_fr3_desk()
+    user, pw = load_creds_franka_desk()
     rcs_fr3.desk.guiding_mode(ip, user, pw, disable, unlock)
 
 
@@ -92,7 +92,7 @@ def shutdown(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
 ):
     """Shuts the robot down"""
-    user, pw = load_creds_fr3_desk()
+    user, pw = load_creds_franka_desk()
     rcs_fr3.desk.shutdown(ip, user, pw)
 
 

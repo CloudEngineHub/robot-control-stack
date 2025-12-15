@@ -144,10 +144,11 @@ int test_sim() {
     if (state->ik_success) {
       if (state->is_moving) {
         throw std::runtime_error(
-            "FR3 should not be moving at the end of a step");
+            "robot should not be moving at the end of a step");
       }
       if (not state->is_arrived) {
-        throw std::runtime_error("FR3 should be arrived at the end of a step");
+        throw std::runtime_error(
+            "robot should be arrived at the end of a step");
       }
       /* According to fact sheet, pose repeatability within iso cube is 0.1
        * millimeters, i.e. 0.0001 meters.
@@ -223,7 +224,7 @@ int test_sim() {
                   << fr3.get_state()->target_angles - fr3.get_joint_position()
                   << std::endl;
         throw std::runtime_error(
-            "FR3 should be close to the desired cartesian pose");
+            "robot should be close to the desired cartesian pose");
       }
     }
   }

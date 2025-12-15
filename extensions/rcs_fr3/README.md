@@ -3,7 +3,8 @@ Extension to control the fr3 with rcs.
 
 ## Installation
 ```shell
-pip install -ve .
+# go to this directory
+pip install -ve . --no-build-isolation
 ```
 
 Add your FR3 credentials to a `.env` file like this:
@@ -16,13 +17,13 @@ DESK_PASSWORD=...
 ```python
 import rcs_fr3
 from rcs_fr3._core import hw
-from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
-user, pw = load_creds_fr3_desk()
+from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_franka_desk
+user, pw = load_creds_franka_desk()
 with FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False):
     urdf_path = rcs.scenes["fr3_empty_world"].urdf
     ik = rcs.common.RL(str(urdf_path))
-    robot = hw.FR3(ROBOT_IP, ik)
-    robot_cfg = FR3Config()
+    robot = hw.Franka(ROBOT_IP, ik)
+    robot_cfg = hw.FR3Config()
     robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
     robot_cfg.ik_solver = IKSolver.rcs_ik
     robot.set_config(robot_cfg)
