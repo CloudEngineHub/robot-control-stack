@@ -8,7 +8,6 @@ import typing
 from dataclasses import dataclass
 from enum import IntEnum
 from multiprocessing.shared_memory import SharedMemory
-from typing import Any
 
 import numpy as np
 import rtde_control
@@ -166,8 +165,6 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 
 
 class UR5e(common.Robot):
-    _stop_queue: mp.Queue[Any]
-    _config_queue: mp.Queue[Any]
 
     def __init__(self, ip: str, ik: common.Kinematics):
         self.ik = ik
