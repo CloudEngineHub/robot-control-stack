@@ -1,5 +1,4 @@
 import logging
-from time import sleep
 
 import numpy as np
 from rcs._core.common import RobotPlatform
@@ -59,14 +58,13 @@ def main():
             control_mode=ControlMode.CARTESIAN_TQuat,
             collision_guard=False,
             robot_cfg=robot_sim_cfg,
-            # gripper_cfg=gripper_config,
+            gripper_cfg=gripper_config,
             max_relative_movement=(0.1, np.deg2rad(5)),
             relative_to=RelativeTo.LAST_STEP,
         )
         env_rel.get_wrapper_attr("sim").open_gui()
 
     obs, info = env_rel.reset()
-    sleep(1.0)
 
     for _ in range(100):
         for _ in range(10):

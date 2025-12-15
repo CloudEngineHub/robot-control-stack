@@ -175,8 +175,8 @@ class UR5e(common.Robot):
         # Initialize shared memory and communication queues
         self._shm = SharedMemory(name=SHM_NAME, create=True, size=SHM_SIZE)
         self._shm_buffer = self._shm.buf
-        self._stop_queue = mp.Queue()
-        self._config_queue = mp.Queue()
+        self._stop_queue: mp.Queue[str] = mp.Queue()
+        self._config_queue: mp.Queue[UR5eConfig] = mp.Queue()
         self._offset_mode = 0
         self._offset_target_reached = self._offset_mode + 4
         self._offset_joint_target = self._offset_target_reached + 1
