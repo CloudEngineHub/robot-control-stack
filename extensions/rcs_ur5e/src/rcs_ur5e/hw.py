@@ -21,7 +21,7 @@ from rcs import common
 @dataclass(kw_only=True)
 class UR5eConfig(common.RobotConfig):
     # Kinematics Setup
-    robot_type : common.RobotType = common.RobotType.UR5e
+    robot_type: common.RobotType = common.RobotType.UR5e
     kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
     attachment_site = "attachment_site"
 
@@ -48,7 +48,7 @@ class UR5eConfig(common.RobotConfig):
             "lookahead_time": self.lookahead_time,
             "gain": self.gain,
         }
-    
+
     def from_dict(self, data: dict[str, typing.Any]) -> None:
         for key, value in data.items():
             setattr(self, key, value)
