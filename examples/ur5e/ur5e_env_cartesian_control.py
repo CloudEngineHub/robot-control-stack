@@ -1,4 +1,5 @@
 import logging
+from time import sleep
 
 import numpy as np
 from rcs._core.common import RobotPlatform
@@ -23,7 +24,7 @@ def main():
         robot_cfg.async_control = False
         env_rel = RCSUR5eEnvCreator()(
             robot_cfg=robot_cfg,
-            control_mode=ControlMode.CARTESIAN_TRPY,
+            control_mode=ControlMode.CARTESIAN_TQuat,
             ip=ROBOT_IP,
             camera_set=None,
             max_relative_movement=0.2,
@@ -71,10 +72,12 @@ def main():
             # move 1cm in x direction (forward) and close gripper
             act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1.0], "gripper": 0}
             obs, reward, terminated, truncated, info = env_rel.step(act)
+            sleep(0.6)
         for _ in range(10):
             # move 1cm in negative x direction (backward) and open gripper
             act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1.0], "gripper": 1}
             obs, reward, terminated, truncated, info = env_rel.step(act)
+            sleep(0.6)
 
 
 if __name__ == "__main__":

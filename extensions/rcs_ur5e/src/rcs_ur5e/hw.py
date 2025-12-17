@@ -21,8 +21,9 @@ from rcs import common
 @dataclass(kw_only=True)
 class UR5eConfig(common.RobotConfig):
     # Kinematics Setup
+    robot_type : common.RobotType = common.RobotType.UR5e
     kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
-    attachment_site = "attachment_site_testo"
+    attachment_site = "attachment_site"
 
     # Robot movement parameters
     max_velocity: float = 1.0
@@ -35,12 +36,23 @@ class UR5eConfig(common.RobotConfig):
     lookahead_time: float = 0.05
     gain: float = 500.0
 
-    def __post_init__(self):
-        super().__init__()
+    def to_dict(self) -> dict[str, typing.Any]:
+        return {
+            "kinematic_model_path": self.kinematic_model_path,
+            "attachment_site": self.attachment_site,
+            "max_velocity": self.max_velocity,
+            "max_acceleration": self.max_acceleration,
+            "async_control": self.async_control,
+            "max_servo_joint_step": self.max_servo_joint_step,
+            "max_servo_cartesian_step": self.max_servo_cartesian_step,
+            "lookahead_time": self.lookahead_time,
+            "gain": self.gain,
+        }
+    
+    def from_dict(self, data: dict[str, typing.Any]) -> None:
+        for key, value in data.items():
+            setattr(self, key, value)
 
-
-@dataclass(kw_only=True)
-class UR5eState(common.RobotState):
     def __post_init__(self):
         super().__init__()
 
@@ -96,7 +108,7 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 
         while stop_queue.empty():
             if not config_queue.empty():
-                robot_config = config_queue.get()
+                robot_config.from_dict(config_queue.get())
             t_start = ur_control.initPeriod()
             mode = int.from_bytes(data_buffer[offset_mode:offset_target_reached], "little")
 
@@ -167,16 +179,26 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 class UR5e(common.Robot):
 
     def __init__(self, ip: str, ik: common.Kinematics):
+        super().__init__()
         self.ik = ik
         self._config = UR5eConfig()
         self._config.robot_type = common.RobotType.UR5e
         self._ip = ip
 
+        # Delete shared memory if it exists
+        try:
+            existing_shm = SharedMemory(name=SHM_NAME)
+            existing_shm.close()
+            existing_shm.unlink()
+            print("Existing shared memory unlinked.")
+        except FileNotFoundError:
+            pass
+
         # Initialize shared memory and communication queues
         self._shm = SharedMemory(name=SHM_NAME, create=True, size=SHM_SIZE)
         self._shm_buffer = self._shm.buf
         self._stop_queue: mp.Queue[str] = mp.Queue()
-        self._config_queue: mp.Queue[UR5eConfig] = mp.Queue()
+        self._config_queue: mp.Queue[dict[str, typing.Any]] = mp.Queue()
         self._offset_mode = 0
         self._offset_target_reached = self._offset_mode + 4
         self._offset_joint_target = self._offset_target_reached + 1
@@ -246,17 +268,17 @@ class UR5e(common.Robot):
 
     def set_config(self, robot_cfg: UR5eConfig) -> None:
         self._config = robot_cfg
-        self._config_queue.put(robot_cfg)
+        self._config_queue.put(robot_cfg.to_dict())
 
     def get_state(self) -> common.RobotState:
-        return UR5eState()
+        return common.RobotState()
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
-        q = self.ik.inverse(pose, self.get_joint_position())
+        q = self.ik.inverse(pose, q0=self.get_joint_position())
         if q is None:
             print("IK failed")
             return
-        self.set_joint_position(q)
+        self.set_joint_position(q[0:6])
         return
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Any], np.dtype[np.float64]]) -> None:
@@ -291,6 +313,7 @@ class UR5e(common.Robot):
 
 class RobotiQGripper(common.Gripper):
     def __init__(self, ip):
+        super().__init__()
         self.gripper = robotiq_gripper.RobotiqGripper()
         try:
             self.gripper.connect(ip, 63352, socket_timeout=3.0)  # default port for Robotiq gripper
