@@ -206,6 +206,9 @@ void SimRobot::m_reset() {
 }
 
 void SimRobot::set_joints_hard(const common::VectorXd& q) {
+  // TODO does not work for some reason
+  this->state.target_angles = q;
+  this->state.previous_angles = this->get_joint_position();
   for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
     size_t jnt_id = this->ids.joints[i];
     size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];

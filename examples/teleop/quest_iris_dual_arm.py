@@ -107,7 +107,7 @@ class QuestReader(threading.Thread):
             for controller in self.controller_names:
                 transform = Pose(
                     translation=(
-                        self._last_controller_pose[controller].translation()
+                        self._last_controller_pose[controller].translation()  # type: ignore
                         - self._offset_pose[controller].translation()
                     ),
                     quaternion=(
@@ -176,7 +176,7 @@ class QuestReader(threading.Thread):
                 )
                 if controller == "left":
                     last_controller_pose = (
-                        Pose(translation=np.array([0, 0, 0]), rpy=RPY(roll=0, pitch=0, yaw=np.deg2rad(180)))
+                        Pose(translation=np.array([0, 0, 0]), rpy=RPY(roll=0, pitch=0, yaw=np.deg2rad(180)))  # type: ignore
                         * last_controller_pose
                     )
 
@@ -195,7 +195,7 @@ class QuestReader(threading.Thread):
                     # released
                     transform = Pose(
                         translation=(
-                            self._last_controller_pose[controller].translation()
+                            self._last_controller_pose[controller].translation()  # type: ignore
                             - self._offset_pose[controller].translation()
                         ),
                         quaternion=(
@@ -265,7 +265,7 @@ class QuestReader(threading.Thread):
             actions = {}
             for robot, transform in transforms.items():
                 action = dict(
-                    LimitedTQuatRelDictType(tquat=np.concatenate([transform.translation(), transform.rotation_q()]))
+                    LimitedTQuatRelDictType(tquat=np.concatenate([transform.translation(), transform.rotation_q()]))  # type: ignore
                 )
 
                 action.update(GripperDictType(gripper=grippers[robot]))

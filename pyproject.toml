@@ -170,4 +170,5 @@ version_files = [
     "extensions/rcs_realsense/pyproject.toml:version",
     "extensions/rcs_so101/pyproject.toml:version",
     "extensions/rcs_xarm7/pyproject.toml:version",
+    "extensions/rcs_ur5e/pyproject.toml:version",
 ]
