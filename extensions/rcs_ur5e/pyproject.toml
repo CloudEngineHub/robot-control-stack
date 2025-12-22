@@ -19,9 +19,11 @@ authors = [
   { name = "Johannes Hechtl", email = "johannes.hechtl@siemens.com" },
 ]
 requires-python = ">=3.10"
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
-  "Programming Language :: Python :: 3",
-]
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
 

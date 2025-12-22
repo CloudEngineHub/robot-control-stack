@@ -30,7 +30,7 @@ install.components = ["python_package"]
 
 [tool.black]
 line-length = 120
-target-version = ["py311"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"
