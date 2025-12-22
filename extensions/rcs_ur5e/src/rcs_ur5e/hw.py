@@ -278,7 +278,7 @@ class UR5e(common.Robot):
         if q is None:
             print("IK failed")
             return
-        self.set_joint_position(q[0:6])
+        self.set_joint_position(q[0:6])  # type: ignore
         return
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Any], np.dtype[np.float64]]) -> None:
