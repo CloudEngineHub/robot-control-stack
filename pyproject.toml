@@ -155,20 +155,41 @@ version_files = [
     "CMakeLists.txt:VERSION",
     "python/rcs/_core/__init__.pyi:__version__",
 
+    # --- FR3 Extension ---
     "extensions/rcs_fr3/CMakeLists.txt:VERSION",
     "extensions/rcs_fr3/src/rcs_fr3/_core/__init__.pyi:__version__",
-    "extensions/rcs_fr3/pyproject.toml:version",
+    "extensions/rcs_fr3/pyproject.toml:version", 
+    # The line below updates the dependency string "rcs>=x.y.z"
+    "extensions/rcs_fr3/pyproject.toml:\"rcs>=(.*)\"",
 
+    # --- Panda Extension ---
     "extensions/rcs_panda/CMakeLists.txt:VERSION",
     "extensions/rcs_panda/src/rcs_fr3/_core/__init__.pyi:__version__",
     "extensions/rcs_panda/pyproject.toml:version",
+    "extensions/rcs_panda/pyproject.toml:\"rcs>=(.*)\"",
 
+    # --- Robotics Library ---
     "extensions/rcs_robotics_library/CMakeLists.txt:VERSION",
     "extensions/rcs_robotics_library/src/rcs_robotics_library/_core/__init__.pyi:__version__",
     "extensions/rcs_robotics_library/pyproject.toml:version",
+    "extensions/rcs_robotics_library/pyproject.toml:\"rcs>=(.*)\"",
 
-    "extensions/rcs_realsense/pyproject.toml:version",
+    # --- SO101 ---
+    "extensions/rcs_so101/CMakeLists.txt:VERSION",
+    "extensions/rcs_so101/src/rcs_so101/_core/__init__.pyi:__version__",
     "extensions/rcs_so101/pyproject.toml:version",
+    "extensions/rcs_so101/pyproject.toml:\"rcs>=(.*)\"",
+
+    # --- Other Extensions ---
+    "extensions/rcs_realsense/pyproject.toml:version",
+    "extensions/rcs_realsense/src/rcs_realsense/__init__.py:__version__",
+    "extensions/rcs_realsense/pyproject.toml:\"rcs>=(.*)\"",
+
     "extensions/rcs_xarm7/pyproject.toml:version",
+    "extensions/rcs_xarm7/src/rcs_xarm7/__init__.py:__version__",
+    "extensions/rcs_xarm7/pyproject.toml:\"rcs>=(.*)\"",
+
     "extensions/rcs_ur5e/pyproject.toml:version",
+    "extensions/rcs_ur5e/src/rcs_ur5e/__init__.py:__version__",
+    "extensions/rcs_ur5e/pyproject.toml:\"rcs>=(.*)\"",
 ]
