@@ -36,11 +36,11 @@ class FrankIK(Kinematics):
         self.allow_elbow_flips = allow_elbow_flips
         self.kin = FrankaKinematics(robot_type="fr3")
 
-    def forward(self, q0: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]], tcp_offset: Pose) -> Pose:
+    def forward(self, q0: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]], tcp_offset: Pose) -> Pose:  # type: ignore
         print("forward called")
         return Pose(pose_matrix=self.kin.forward(q0, tcp_offset.pose_matrix()))
 
-    def inverse(
+    def inverse(  # type: ignore
         self, pose: Pose, q0: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]], tcp_offset: Pose
     ) -> np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]] | None:
         tcp_offset = self.kin.FrankaHandTCPOffset
