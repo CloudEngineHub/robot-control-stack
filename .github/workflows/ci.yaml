@@ -35,7 +35,7 @@ jobs:
       - name: Install wheel
         run: python -m pip install wheel
       - name: Install the package
-        run: python -m pip install -v --no-build-isolation '.[dev]'
+        run: python -m pip install -ve '.[dev]' --no-build-isolation
       - name: Check formatting
         run: make pycheckformat
       - name: Code linting
@@ -95,10 +95,10 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Install rcs
-        run: pip install -v --no-build-isolation '.[dev]'
+        run: pip install -ve '.[dev]' --no-build-isolation
 
       - name: Install extension
-        run: pip install -v --no-build-isolation extensions/${{ matrix.extension }}
+        run: pip install -ve extensions/${{ matrix.extension }} --no-build-isolation
 
   build_cpp_extensions:
     needs: [pythonpackage, check-paths]
@@ -138,9 +138,9 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
       - name: Install RCS
-        run: pip install -v --no-build-isolation '.[dev]'
+        run: pip install -ve '.[dev]' --no-build-isolation
       - name: Install extension
-        run: pip install -v --no-build-isolation extensions/${{ matrix.extension }}
+        run: pip install -ve extensions/${{ matrix.extension }} --no-build-isolation
       - name: Check that stub files are up-to-date
         run: make -C extensions/${{ matrix.extension }} stubgen && git diff --exit-code
       - name: Check clang format
