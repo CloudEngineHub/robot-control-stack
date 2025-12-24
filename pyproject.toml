@@ -30,6 +30,7 @@ dependencies = ["websockets>=11.0",
     "rpyc==6.0.2",
     "pyarrow",
     "simplejpeg",
+    "frankik @ git+https://github.com/juelg/frankik",
 ]
 readme = "README.md"
 maintainers = [

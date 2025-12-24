@@ -6,6 +6,7 @@ from typing import Type
 import gymnasium as gym
 import numpy as np
 from gymnasium.envs.registration import EnvCreator
+from rcs._core.common import Kinematics, Pose
 from rcs._core.sim import CameraType
 from rcs.camera.interface import BaseCameraSet
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
@@ -29,6 +30,7 @@ from rcs.envs.sim import (
     SimWrapper,
 )
 from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
+from frankik import FrankaKinematics
 
 import rcs
 from rcs import sim
@@ -36,7 +38,26 @@ from rcs import sim
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+class FrankIK(Kinematics):
+    def __init__(self):
+        Kinematics.__init__(self)
+        self.kin = FrankaKinematics(robot_type="fr3")
 
+    def forward(self, q0: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]], tcp_offset: Pose) -> Pose:  # type: ignore
+        return Pose(pose_matrix=self.kin.forward(q0, tcp_offset.pose_matrix()))
+
+    def inverse(  # type: ignore
+        self, pose: Pose, q0: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]], tcp_offset: Pose
+    ) -> np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]] | None:
+        return self.kin.inverse(
+            pose.pose_matrix(), q0, tcp_offset.pose_matrix()
+        )
+
+
+# FYI: this needs to be in global namespace to avoid auto garbage collection issues
+# pybind11 3.x would avoid this but with smart_holder but we cannot update due to the subfiles issue yet
+FastIK = FrankIK()
+ 
 class RCSHardwareEnvCreator(EnvCreator):
     pass
 
@@ -79,14 +100,15 @@ class SimEnvCreator(EnvCreator):
         """
         simulation = sim.Sim(robot_cfg.mjcf_scene_path, sim_cfg)
 
-        ik = rcs.common.Pin(
-            robot_cfg.kinematic_model_path,
-            robot_cfg.attachment_site,
-            urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
-        )
+        ik = FastIK
+        # ik = rcs.common.Pin(
+        #     robot_cfg.kinematic_model_path,
+        #     robot_cfg.attachment_site,
+        #     urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+        # )
         # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
 
-        robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
+        robot = rcs.sim.SimRobot(sim=simulation, ik=ik, cfg=robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
         assert not (
             hand_cfg is not None and gripper_cfg is not None
@@ -154,6 +176,7 @@ class SimMultiEnvCreator(RCSHardwareEnvCreator):
             robot_cfg.attachment_site,
             urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
         )
+        # ik = FastIK
         # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
 
         robots: dict[str, rcs.sim.SimRobot] = {}

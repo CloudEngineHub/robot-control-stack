@@ -19,7 +19,7 @@ from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 from rcs.utils import SimpleFrameRate
 from rcs_fr3.creators import RCSFR3MultiEnvCreator
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
-from rcs_realsense.utils import default_realsense
+# from rcs_realsense.utils import default_realsense
 from simpub.core.simpub_server import SimPublisher
 from simpub.parser.simdata import SimObject, SimScene
 from simpub.sim.mj_publisher import MujocoPublisher
@@ -38,13 +38,13 @@ logger = logging.getLogger(__name__)
 
 INCLUDE_ROTATION = True
 ROBOT2IP = {
-    "left": "192.168.102.1",
+    # "left": "192.168.102.1",
     "right": "192.168.101.1",
 }
 
 
-# ROBOT_INSTANCE = RobotPlatform.SIMULATION
-ROBOT_INSTANCE = RobotPlatform.HARDWARE
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
+# ROBOT_INSTANCE = RobotPlatform.HARDWARE
 RECORD_FPS = 30
 # set camera dict to none disable cameras
 # CAMERA_DICT = {
@@ -53,7 +53,7 @@ RECORD_FPS = 30
 #     "arro": "243522070385",
 # }
 CAMERA_DICT = None
-MQ3_ADDR = "10.42.0.1"
+MQ3_ADDR = "192.168.1.20"
 
 DATASET_PATH = "test_data_iris_dual_arm"
 INSTRUCTION = "build a tower with the blocks in front of you"
@@ -314,7 +314,7 @@ def main():
 
     else:
         # FR3
-        robot_cfg = default_sim_robot_cfg("fr3_empty_world")
+        robot_cfg = default_sim_robot_cfg("fr3_simple_pick_up")
 
         sim_cfg = SimConfig()
         sim_cfg.async_control = True
