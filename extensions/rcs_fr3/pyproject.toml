@@ -8,7 +8,7 @@ version = "0.5.2"
 description="RCS libfranka integration"
 dependencies = [
     "rcs>=0.5.2",
-    "frankik @ git+https://github.com/juelg/frankik",
+    "frankik",
 ]
 readme = "README.md"
 maintainers = [
