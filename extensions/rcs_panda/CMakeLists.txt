@@ -44,8 +44,7 @@ set(BUILD_DOCUMENTATION OFF)
 
 include(FetchContent)
 
-find_package(Eigen3 REQUIRED)
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 
@@ -62,8 +61,14 @@ FetchContent_Declare(pybind11
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
+FetchContent_Declare(Eigen3
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG 3.4.1
+    GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
+)
 
-FetchContent_MakeAvailable(libfranka pybind11)
+FetchContent_MakeAvailable(libfranka pybind11 Eigen3)
 set_target_properties(franka PROPERTIES CXX_STANDARD 17)
 
 add_subdirectory(src_fr3)
