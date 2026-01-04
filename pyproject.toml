@@ -12,7 +12,7 @@ requires = [
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "rcs"
+name = "robot-control-stack"
 version = "0.5.2"
 description = "Python Interface for libfranka to control the Franka Research 3 Robot"
 dependencies = [
@@ -50,7 +50,7 @@ authors = [
 requires-python = ">=3.10"
 license = "AGPL-3.0-or-later"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
   "ruff==0.3.2",
   "black==24.1.1",
@@ -67,6 +67,12 @@ dev = [
   "clang-tidy",
 ]
 
+[tool.cibuildwheel]
+skip = ["cp314*", "*-musllinux*"]
+# Install X11 headers needed to compile GLFW
+before-all = "yum install -y libXi-devel libXcursor-devel libXinerama-devel libXrandr-devel glfw-devel"
+# Exclude MuJoCo AND Pinocchio from being bundled.
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libmujoco.so.3.2.6 --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
 
 [tool.scikit-build]
 build.verbose = true

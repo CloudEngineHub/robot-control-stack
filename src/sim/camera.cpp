@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 #include <memory>
 #include <set>
 #include <stdexcept>

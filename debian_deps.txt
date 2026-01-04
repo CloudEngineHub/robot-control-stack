@@ -1,5 +1,6 @@
 build-essential
 gcc
+ninja
+cmake
 libpoco-dev
-libeigen3-dev
 libglfw3-dev
