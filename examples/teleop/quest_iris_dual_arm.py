@@ -59,7 +59,8 @@ RECORD_FPS = 30
 #     "arro": "243522070385",
 # }
 CAMERA_DICT = None
-MQ3_ADDR = "192.168.1.20"
+# MQ3_ADDR = "10.42.0.1"
+MQ3_ADDR = "192.168.1.219"
 
 DATASET_PATH = "test_data_iris_dual_arm"
 INSTRUCTION = "build a tower with the blocks in front of you"
@@ -101,7 +102,7 @@ class QuestReader(threading.Thread):
         self._last_controller_pose = {key: Pose() for key in self.controller_names}
         self._offset_pose = {key: Pose() for key in self.controller_names}
 
-        for robot in ROBOT2IP:
+        for robot in ROBOT2IP if ROBOT_INSTANCE == RobotPlatform.HARDWARE else ROBOT2ID:
             self._env.envs[robot].set_origin_to_current()
 
         self._step_env = False
@@ -360,7 +361,11 @@ def main():
             relative_to=RelativeTo.CONFIGURED_ORIGIN,
             sim_cfg=sim_cfg,
         )
-        sim = env_rel.unwrapped.envs[ROBOT2ID.keys().__iter__().__next__()].sim  # type: ignore
+        # env_rel = StorageWrapper(
+        #     env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000
+        # )
+        # sim = env_rel.unwrapped.envs[ROBOT2ID.keys().__iter__().__next__()].sim  # type: ignore
+        sim = env_rel.get_wrapper_attr("sim")
         sim.open_gui()
         # MySimPublisher(MySimScene(), MQ3_ADDR)
         MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
