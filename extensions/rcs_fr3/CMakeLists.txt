@@ -50,10 +50,14 @@ find_package(rcs REQUIRED)
 
 FetchContent_Declare(
     libfranka
-    GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
-    GIT_TAG 0.15.0
+    GIT_REPOSITORY https://github.com/frankarobotics/libfranka.git
+    GIT_TAG 0.19.0
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
+    # Overwrite the version check script with our dummy script
+    PATCH_COMMAND  ${CMAKE_COMMAND} -E copy
+                   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SetVersionFromGit.cmake"
+                   "cmake/SetVersionFromGit.cmake"
 )
 FetchContent_Declare(pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11.git
