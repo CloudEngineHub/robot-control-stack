@@ -8,4 +8,6 @@ sed -E -e "s/name=\"([^\"]*)/name=\"\1_${id}/" \
        -e "s/joint1=\"([^\"]*)/joint1=\"\1_${id}/" \
        -e "s/joint2=\"([^\"]*)/joint2=\"\1_${id}/" \
        -e "s/tendon=\"([^\"]*)/tendon=\"\1_${id}/" \
-       "${script_dir}/fr3_unnamed.xml" > "$(realpath ${dst_dir})/fr3_${id}.xml"
+       -e "s/body1=\"([^\"]*)/body1=\"\1_${id}/" \
+       -e "s/body2=\"([^\"]*)/body2=\"\1_${id}/" \
+       "${script_dir}/panda.xml" > "$(realpath ${dst_dir})/panda_${id}.xml"
