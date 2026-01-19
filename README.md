@@ -1,8 +1,52 @@
 # Robot Control Stack
 
-**Robot Control Stack (RCS)** is a unified and multilayered robot control interface over a MuJoCo simulation and real world robot currently implemented for the FR3/Panda, xArm7, UR5e and SO101.
+**Robot Control Stack (RCS)** is a flexible Gymnasium wrapper-based robot control interface made for robot learning and specifically Vision-Language-Action (VLA) models.
+It unifies MuJoCo simulation and real world robot control with four supported robots: FR3/Panda, xArm7, UR5e and SO101.
+It ships with several pre-build apps including data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents).
 
-![rcs architecture diagram](docs/_static/rcs_architecture_small.svg)
+<video 
+  src="https://github.com/RobotControlStack/robotcontrolstack.github.io/blob/master/static/videos/grid.mp4?raw=true" 
+  autoplay 
+  muted 
+  loop 
+  playsinline
+  style="max-width: 100%;">
+</video>
+
+## Wrapper-Based Architecture
+
+<img src="docs/_static/rcs_architecture_small.svg" alt="rcs architecture diagram" width="100%">
+
+## Example
+```python
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.creators import SimEnvCreator
+from rcs.envs.utils import (
+    default_mujoco_cameraset_cfg,
+    default_sim_gripper_cfg,
+    default_sim_robot_cfg,
+)
+env_rel = SimEnvCreator()(
+    control_mode=ControlMode.CARTESIAN_TQuat,  # (trans(x, y, z), quat(x, y, z, w))
+    robot_cfg=default_sim_robot_cfg(scene="fr3_empty_world"),
+    gripper_cfg=default_sim_gripper_cfg(),
+    cameras=default_mujoco_cameraset_cfg(),
+    max_relative_movement=0.1,  # max 10cm in each direction
+    relative_to=RelativeTo.LAST_STEP,
+)
+env_rel.get_wrapper_attr("sim").open_gui()
+env_rel.reset()
+
+# access low level robot api to get current cartesian position
+print(env_rel.unwrapped.robot.get_cartesian_position())
+
+for _ in range(10):
+    # move 1cm in x direction (forward) and close gripper
+    act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
+    obs, reward, terminated, truncated, info = env_rel.step(act)
+    print(obs)
+```
+See more examples in the [examples](examples/) folder.
 
 ## Installation
 
