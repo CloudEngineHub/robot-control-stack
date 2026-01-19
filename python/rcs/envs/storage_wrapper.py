@@ -1,3 +1,4 @@
+import io
 import operator
 from concurrent.futures import ThreadPoolExecutor, wait
 from itertools import chain
@@ -10,6 +11,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.dataset as ds
 import simplejpeg
+from PIL import Image
 
 
 class StorageWrapper(gym.Wrapper):
@@ -22,7 +24,7 @@ class StorageWrapper(gym.Wrapper):
         instruction: str,
         batch_size: int = 32,
         schema: Optional[pa.Schema] = None,
-        start_record: bool = False,
+        always_record: bool = False,
         basename_template: Optional[str] = None,
         max_rows_per_group: Optional[int] = None,
         max_rows_per_file: Optional[int] = None,
@@ -72,9 +74,10 @@ class StorageWrapper(gym.Wrapper):
         self.max_rows_per_file = max_rows_per_file
         self.buffer: list[dict[str, Any]] = []
         self.step_cnt = 0
-        self._pause = True
+        self._pause = not always_record
+        self.always_record = always_record
         self.instruction = instruction
-        self._success = start_record
+        self._success = False
         self._prev_action = None
         self.thread_pool = ThreadPoolExecutor()
         self.queue: Queue[pa.Table | pa.RecordBatch] = Queue(maxsize=2)
@@ -122,12 +125,38 @@ class StorageWrapper(gym.Wrapper):
         d.update(updates)
 
     def _encode_images(self, obs: dict[str, Any]):
+        # images
         _ = [
             *self.thread_pool.map(
                 lambda cam: operator.setitem(
                     obs["frames"][cam]["rgb"],
                     "data",
                     simplejpeg.encode_jpeg(np.ascontiguousarray(obs["frames"][cam]["rgb"]["data"])),
+                ),
+                obs["frames"],
+            )
+        ]
+
+        # depth
+        def to_tiff(depth_data):
+            img_bytes = io.BytesIO()
+            Image.fromarray(
+                depth_data.reshape((depth_data.shape[0], depth_data.shape[1])),
+            ).save(
+                img_bytes, format="TIFF"
+            )  # type: ignore
+            return img_bytes.getvalue()  # type: ignore
+
+        _ = [
+            *self.thread_pool.map(
+                lambda cam: (
+                    operator.setitem(
+                        obs["frames"][cam]["depth"],
+                        "data",
+                        to_tiff(obs["frames"][cam]["depth"]["data"]),
+                    )
+                    if "depth" in obs["frames"][cam]
+                    else None
                 ),
                 obs["frames"],
             )
@@ -179,7 +208,7 @@ class StorageWrapper(gym.Wrapper):
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None):
         if len(self.buffer) > 0:
             self._flush()
-        self._pause = True
+        self._pause = not self.always_record
         self._success = False
         self._prev_action = None
         obs, info = self.env.reset()

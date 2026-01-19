@@ -31,9 +31,9 @@ logger.setLevel(logging.INFO)
 
 
 class FrankIK(Kinematics):
-    def __init__(self, allow_elbow_flips: bool = False):
+    def __init__(self, global_solution: bool = False):
         Kinematics.__init__(self)
-        self.allow_elbow_flips = allow_elbow_flips
+        self.global_solution = global_solution
         self.kin = FrankaKinematics(robot_type="fr3")
 
     def forward(self, q0: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]], tcp_offset: Pose) -> Pose:  # type: ignore
@@ -43,10 +43,7 @@ class FrankIK(Kinematics):
     def inverse(  # type: ignore
         self, pose: Pose, q0: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]], tcp_offset: Pose
     ) -> np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]] | None:
-        tcp_offset = self.kin.FrankaHandTCPOffset
-        return self.kin.inverse(
-            pose.pose_matrix(), q0, tcp_offset.pose_matrix(), allow_elbow_flips=self.allow_elbow_flips
-        )
+        return self.kin.inverse(pose.pose_matrix(), q0, tcp_offset.pose_matrix(), global_solution=self.global_solution)
 
 
 # FYI: this needs to be in global namespace to avoid auto garbage collection issues
