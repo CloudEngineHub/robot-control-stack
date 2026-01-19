@@ -70,7 +70,7 @@ class RobotSimWrapper(gym.Wrapper):
         return obs, 0, False, info["collision"] or not state.ik_success, info
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim.reset()
         obs, info = super().reset(seed=seed, options=options)
@@ -103,11 +103,11 @@ class MultiSimRobotWrapper(gym.Wrapper):
         truncated = np.all([info[key]["collision"] or info[key]["ik_success"] for key in info])
         return obs, 0.0, False, bool(truncated), info
 
-    def reset(
-        self, seed: dict[str, int | None] | None = None, options: dict[str, Any] | None = None  # type: ignore
+    def reset(  # type: ignore
+        self, *, seed: dict[str, int | None] | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         if seed is None:
-            seed = {key: None for key in self.env.envs}
+            seed = dict.fromkeys(self.env.envs)
         if options is None:
             options = {key: {} for key in self.env.envs}
         obs = {}
@@ -196,7 +196,6 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             self.sim.open_gui()
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
-
         self.collision_env.get_wrapper_attr("robot").set_joints_hard(self.unwrapped.robot.get_joint_position())
         _, _, _, _, info = self.collision_env.step(action)
 
@@ -219,7 +218,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         return obs, reward, done, truncated, info
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         # check if move to home is collision free
         if self.check_home_collision:
@@ -333,7 +332,7 @@ class RandomObjectPos(SimWrapper):
         self.y_offset = y_offset
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         if options is not None and "RandomObjectPos.init_object_pose" in options:
             assert isinstance(
@@ -381,7 +380,7 @@ class RandomCubePos(SimWrapper):
         self.cube_joint_name = cube_joint_name
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         obs, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
@@ -421,7 +420,7 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         self._gripper_closing = 0
         self._gripper = self.get_wrapper_attr("_gripper")
 
-    def step(self, action: dict[str, Any]):
+    def step(self, action: dict[str, Any]):  # type: ignore
         obs, reward, _, truncated, info = super().step(action)
         if (
             self._gripper.get_normalized_width() > 0.01
@@ -456,11 +455,7 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         reward /= 3  # type: ignore
         return obs, reward, success, truncated, info
 
-    def reset(
-        self,
-        seed: dict[str, int | None] | None = None,
-        options: dict[str, Any] | None = None,  # type: ignore
-    ):
+    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None):
         obs, info = super().reset()
         self.home_pose = self.unwrapped.robot.get_cartesian_position()
         return obs, info
