@@ -45,14 +45,14 @@ if __name__ == "__main__":
 
     # gripper
     gripper = sim.SimGripper(simulation, gripper_cfg)
-    env = GripperWrapper(env, gripper, binary=True)  # type: ignore
+    env = GripperWrapper(env, gripper, binary=True)
 
     env = RobotSimWrapper(env, simulation)
     env = GripperWrapperSim(env, gripper)
 
     # camera
     camera_set = SimCameraSet(simulation, cameras, physical_units=True, render_on_demand=True)
-    env = CameraSetWrapper(env, camera_set, include_depth=True)
+    env = CameraSetWrapper(env, camera_set, include_depth=True)  # type: ignore
 
     # relative actions bounded by 10cm translation and 10 degree rotation
     env = RelativeActionSpace(env, max_mov=(0.1, np.deg2rad(10)), relative_to=RelativeTo.LAST_STEP)
