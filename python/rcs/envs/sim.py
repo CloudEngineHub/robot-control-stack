@@ -402,52 +402,58 @@ class RandomCubePos(SimWrapper):
 
 
 class PickCubeSuccessWrapper(gym.Wrapper):
-    """Wrapper to check if the cube is successfully picked up in the FR3SimplePickUpSim environment."""
+    """
+    Wrapper to check if the cube is successfully picked up in the FR3SimplePickUpSim environment.
+    Cube must be lifted 10 cm above the robot base.
+    Computes a reward between 0 and 1 based on:
+    - TCP to object distance
+    - cube z height
+    - whether the arm is standing still once the task is solved.
+    """
 
-    EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
+    # In robot coordinates
+    EE_HOME = np.array([3.06890567e-01, 3.76703856e-23, 4.40282052e-01])
 
     def __init__(self, env, cube_joint_name="box_joint"):
         super().__init__(env)
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
-        self.cube_joint_name = cube_joint_name
+        self.cube_geom_name = "box_geom"
+        self._gripper_closing = 0
 
     def step(self, action: dict[str, Any]):
         obs, reward, _, truncated, info = super().step(action)
-
-        success = (
-            self.sim.data.joint(self.cube_joint_name).qpos[2] > 0.15 + 0.852
+        if (
+            self._gripper.get_normalized_width() > 0.01
+            and self._gripper.get_normalized_width() < 0.99
             and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
-        )
-        info["success"] = success
-        if success:
-            reward = 5
+        ):
+            self._gripper_closing += 1
         else:
-            tcp_to_obj_dist = np.linalg.norm(
-                self.sim.data.joint(self.cube_joint_name).qpos[:3]
-                - self.unwrapped.robot.get_cartesian_position().translation()
-            )
-            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint(self.cube_joint_name).qpos[:3] - self.EE_HOME)
+            self._gripper_closing = 0
+        cube_pose = rcs.common.Pose(translation=self.sim.data.geom(self.cube_geom_name).xpos)
+        cube_pose = self.unwrapped.robot.to_pose_in_robot_coordinates(cube_pose)
+        tcp_to_obj_dist = np.linalg.norm(
+            cube_pose.translation() - self.unwrapped.robot.get_cartesian_position().translation()
+        )
+        obj_to_goal_dist = 0.10 - min(cube_pose.translation()[-1], 0.10)
+        # NOTE: 4 depends on the time passing between each step.
+        is_grasped = (
+            self._gripper_closing >= 4  # gripper is closing since more than 4 steps
+            and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED  # command is still close
+            and tcp_to_obj_dist <= 0.007  # tcp to cube center is max 7mm
+        )
+        success = obj_to_goal_dist == 0 and info["is_grasped"]
+        movement = np.linalg.norm(self.sim.data.qvel)
 
-            # old reward
-            # reward = -obj_to_goal_dist - tcp_to_obj_dist
-
-            # Maniskill grasp reward
-            reaching_reward = 1 - np.tanh(5 * tcp_to_obj_dist)
-            reward = reaching_reward
-            is_grasped = info["is_grasped"]
-            reward += is_grasped
-            place_reward = 1 - np.tanh(5 * obj_to_goal_dist)
-            reward += place_reward * is_grasped
-
-            # velocities are currently always zero after a step
-            # qvel = self.agent.robot.get_qvel()
-            # static_reward = 1 - np.tanh(5 * np.linalg.norm(qvel, axis=1))
-            # reward += static_reward * info["is_obj_placed"]
-
-        # normalize
-        reward /= 5  # type: ignore
+        reaching_reward = 1 - np.tanh(5 * tcp_to_obj_dist)
+        place_reward = 1 - np.tanh(5 * obj_to_goal_dist) * is_grasped
+        static_reward = 1 - np.tanh(5 * movement) * success
+        info["is_grasped"] = is_grasped
+        info["success"] = success
+        reward = reaching_reward + place_reward + static_reward
+        reward /= 3  # type: ignore
         return obs, reward, success, truncated, info
 
 
