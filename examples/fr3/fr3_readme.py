@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     # gripper
     gripper = sim.SimGripper(simulation, gripper_cfg)
-    env = GripperWrapper(env, gripper, binary=True)
+    env = GripperWrapper(env, gripper, binary=True)  # type: ignore
 
     env = RobotSimWrapper(env, simulation)
     env = GripperWrapperSim(env, gripper)
