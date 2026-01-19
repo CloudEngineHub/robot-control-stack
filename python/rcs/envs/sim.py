@@ -411,16 +411,15 @@ class PickCubeSuccessWrapper(gym.Wrapper):
     - whether the arm is standing still once the task is solved.
     """
 
-    # In robot coordinates
-    EE_HOME = np.array([3.06890567e-01, 3.76703856e-23, 4.40282052e-01])
-
     def __init__(self, env, cube_joint_name="box_joint"):
         super().__init__(env)
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
         self.cube_geom_name = "box_geom"
+        self.home_pose = self.unwrapped.robot.get_cartesian_position()
         self._gripper_closing = 0
+        self._gripper = self.get_wrapper_attr("_gripper")
 
     def step(self, action: dict[str, Any]):
         obs, reward, _, truncated, info = super().step(action)
@@ -438,27 +437,36 @@ class PickCubeSuccessWrapper(gym.Wrapper):
             cube_pose.translation() - self.unwrapped.robot.get_cartesian_position().translation()
         )
         obj_to_goal_dist = 0.10 - min(cube_pose.translation()[-1], 0.10)
+        obj_to_goal_dist = np.linalg.norm(cube_pose.translation() - self.home_pose.translation())
         # NOTE: 4 depends on the time passing between each step.
         is_grasped = (
             self._gripper_closing >= 4  # gripper is closing since more than 4 steps
             and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED  # command is still close
-            and tcp_to_obj_dist <= 0.007  # tcp to cube center is max 7mm
+            and tcp_to_obj_dist <= 0.01  # tcp to cube center is max 1cm
         )
-        success = obj_to_goal_dist == 0 and info["is_grasped"]
+        success = obj_to_goal_dist <= 0.022 and info["is_grasped"]
         movement = np.linalg.norm(self.sim.data.qvel)
 
         reaching_reward = 1 - np.tanh(5 * tcp_to_obj_dist)
-        place_reward = 1 - np.tanh(5 * obj_to_goal_dist) * is_grasped
-        static_reward = 1 - np.tanh(5 * movement) * success
+        place_reward = 1 - np.tanh(5 * obj_to_goal_dist)
+        static_reward = 1 - np.tanh(5 * movement)
         info["is_grasped"] = is_grasped
         info["success"] = success
-        reward = reaching_reward + place_reward + static_reward
+        reward = reaching_reward + place_reward * is_grasped + static_reward * success
         reward /= 3  # type: ignore
         return obs, reward, success, truncated, info
 
+    def reset(
+        self,
+        seed: dict[str, int | None] | None = None,
+        options: dict[str, Any] | None = None,  # type: ignore
+    ):
+        obs, info = super().reset()
+        self.home_pose = self.unwrapped.robot.get_cartesian_position()
+        return obs, info
+
 
 class DigitalTwin(gym.Wrapper):
-
     def __init__(self, env, twin_env):
         super().__init__(env)
         self.twin_env = twin_env
