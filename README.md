@@ -4,8 +4,9 @@
 It unifies MuJoCo simulation and real world robot control with four supported robots: FR3/Panda, xArm7, UR5e and SO101.
 It ships with several pre-build apps including data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents).
 
+
 <video 
-  src="https://github.com/RobotControlStack/robotcontrolstack.github.io/blob/master/static/videos/grid.mp4?raw=true" 
+  src="https://github.com/user-attachments/assets/21ac29af-373b-46aa-8a08-ae0ae8c0e235" 
   autoplay 
   muted 
   loop 
