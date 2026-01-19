@@ -82,9 +82,9 @@ class TactoSimWrapper(gym.Wrapper):
         self.tacto_last_render = -1  # Reset last render time
         colors, depths = self.tacto_sensor.render(self.model, self.data)
         for site, color, depth in zip(self.tacto_sites, colors, depths, strict=False):
-            obs.setdefault("tacto", {}).setdefault(site, {}).setdefault("rgb", {})["data"] = color
+            obs.setdefault("frames", {}).setdefault(f"tactile_{site}", {}).setdefault("rgb", {})["data"] = color
             if self.enable_depth:
-                obs.setdefault("tacto", {}).setdefault(site, {}).setdefault("depth", {})["data"] = depth
+                obs.setdefault("frames", {}).setdefault(f"tactile_{site}", {}).setdefault("depth", {})["data"] = depth
         return obs, info
 
     def step(self, action: dict[str, Any]):
@@ -94,7 +94,9 @@ class TactoSimWrapper(gym.Wrapper):
             self.tacto_sensor.updateGUI(colors, depths) if self.visualize else None
             self.tacto_last_render = self.data.time
             for site, color, depth in zip(self.tacto_sites, colors, depths, strict=False):
-                obs.setdefault("tacto", {}).setdefault(site, {}).setdefault("rgb", {})["data"] = color
+                obs.setdefault("frames", {}).setdefault(f"tactile_{site}", {}).setdefault("rgb", {})["data"] = color
                 if self.enable_depth:
-                    obs.setdefault("tacto", {}).setdefault(site, {}).setdefault("depth", {})["data"] = depth
+                    obs.setdefault("frames", {}).setdefault(f"tactile_{site}", {}).setdefault("depth", {})[
+                        "data"
+                    ] = depth
         return obs, reward, done, truncated, info
