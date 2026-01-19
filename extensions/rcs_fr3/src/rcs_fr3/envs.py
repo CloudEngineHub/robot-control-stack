@@ -30,8 +30,8 @@ class FR3HW(gym.Wrapper):
     def get_obs(self, obs: dict | None = None) -> dict[str, Any]:
         if obs is None:
             obs = dict(self.unwrapped.get_obs())
-        robot_state = cast(hw.FrankaState, self.unwrapped.robot.get_state())
-        obs["robot_state"] = vars(robot_state.robot_state)
+        # robot_state = cast(hw.FrankaState, self.unwrapped.robot.get_state())
+        # obs["robot_state"] = vars(robot_state.robot_state)
         return obs
 
     def reset(
