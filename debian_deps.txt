@@ -3,3 +3,5 @@ gcc
 libpoco-dev
 libeigen3-dev
 libglfw3-dev
+libconsole-bridge-dev
+libtinyxml2-dev
