@@ -61,10 +61,11 @@ class PickUpDemo:
 
     def grasp(self, geom_name: str):
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.01, num_waypoints=60)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=-0.005, num_waypoints=60)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
-        self.step(self._action(Pose(), GripperWrapper.BINARY_GRIPPER_CLOSED))
+        for _ in range(4):
+            self.step(self._action(self.unwrapped.robot.get_cartesian_position(), GripperWrapper.BINARY_GRIPPER_CLOSED))
 
         waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=60)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
