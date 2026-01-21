@@ -40,6 +40,7 @@ class FR3HW(gym.Wrapper):
             self._robot_state_keys = [
                 attr for attr in dir(state) if not attr.startswith("__") and not callable(getattr(state, attr))
             ]
+            self._robot_state_keys.remove("robot_mode")
         return {key: getattr(state, key) for key in self._robot_state_keys}
 
     def reset(
