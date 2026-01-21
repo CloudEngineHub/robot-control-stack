@@ -22,7 +22,7 @@ namespace hw {
 Franka::Franka(const std::string& ip,
                std::optional<std::shared_ptr<common::Kinematics>> ik,
                const std::optional<FrankaConfig>& cfg)
-    : robot(ip), m_ik(ik) {
+    : robot(ip, franka::RealtimeConfig::kIgnore), m_ik(ik) {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true, true, true, true, true, true, true);

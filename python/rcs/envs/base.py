@@ -204,6 +204,7 @@ class RobotEnv(gym.Env):
     y
     """
 
+    # TODO: home pos reset set to false
     def __init__(self, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = False):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
@@ -542,6 +543,7 @@ class RelativeActionSpace(gym.ActionWrapper):
                         translation=action[self.tquat_key][:3],
                         quaternion=action[self.tquat_key][3:],
                     )
+                    # TODO: clip check
                     .limit_translation_length(self.max_mov[0])
                     .limit_rotation_angle(self.max_mov[1])
                 )

@@ -78,7 +78,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
 
         if camera_set is not None:
             camera_set.start()
-            camera_set.wait_for_frames()
+            camera_set.wait_for_frames(60)
             logger.info("CameraSet started")
             env = CameraSetWrapper(env, camera_set)
 

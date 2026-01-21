@@ -23,8 +23,9 @@ put it into FCI mode before running this script. For a scripted way of unlocking
 fr3_direct_control.py example which uses the FCI context manager.
 """
 
-ROBOT_INSTANCE = RobotPlatform.SIMULATION
-FR3_IP = "192.168.101.1"
+# TODO: set to RobotPlatform.HARDWARE to control a real FR3 robot
+ROBOT_INSTANCE = RobotPlatform.SIMULATION  #HARDWARE
+FR3_IP = "192.168.103.1"
 
 
 def main():
