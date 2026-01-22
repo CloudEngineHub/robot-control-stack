@@ -21,3 +21,8 @@ video*
 GEMINI.md
 docs/_build
 my_notes.md
+
+models/
+RCSToolBox/
+agents/
+
