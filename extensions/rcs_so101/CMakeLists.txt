@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.19)
 project(
     rcs_so101
     LANGUAGES C CXX
-    VERSION 0.5.2
+    VERSION 0.6.0
     DESCRIPTION "RCS so101 ik"
 )
 
