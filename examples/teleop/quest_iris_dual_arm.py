@@ -15,7 +15,7 @@ from rcs.envs.base import (
 )
 from rcs.envs.creators import SimMultiEnvCreator
 from rcs.envs.storage_wrapper import StorageWrapper
-from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
+from rcs.envs.utils import default_digit, default_sim_gripper_cfg, default_sim_robot_cfg
 from rcs.utils import SimpleFrameRate
 from rcs_fr3.creators import RCSFR3MultiEnvCreator
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
@@ -24,8 +24,6 @@ from simpub.core.simpub_server import SimPublisher
 from simpub.parser.simdata import SimObject, SimScene
 from simpub.sim.mj_publisher import MujocoPublisher
 from simpub.xr_device.meta_quest3 import MetaQuest3
-
-# from rcs_xarm7.creators import RCSXArm7EnvCreator
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 INCLUDE_ROTATION = True
 ROBOT2IP = {
-    "left": "192.168.102.1",
+    # "left": "192.168.102.1",
     "right": "192.168.101.1",
 }
 
@@ -48,14 +46,20 @@ ROBOT_INSTANCE = RobotPlatform.HARDWARE
 RECORD_FPS = 30
 # set camera dict to none disable cameras
 # CAMERA_DICT = {
-#     "side_right": "244222071045",
+#     "left_wrist": "230422272017",
+#     "right_wrist": "230422271040",
+#     "side": "243522070385",
 #     "bird_eye": "243522070364",
-#     "arro": "243522070385",
 # }
 CAMERA_DICT = None
 MQ3_ADDR = "10.42.0.1"
+# DIGIT_DICT = {
+#     "digit_right_left": "D21182",
+#     "digit_right_right": "D21193"
+# }
+DIGIT_DICT = None
 
-DATASET_PATH = "test_data_iris_dual_arm"
+DATASET_PATH = "test_data_iris_dual_arm14"
 INSTRUCTION = "build a tower with the blocks in front of you"
 
 
@@ -80,6 +84,7 @@ class QuestReader(threading.Thread):
 
         self._resource_lock = threading.Lock()
         self._env_lock = threading.Lock()
+        self._reset_lock = threading.Lock()
         self._env = env
 
         self.controller_names = ROBOT2IP.keys() if ROBOT_INSTANCE == RobotPlatform.HARDWARE else ["right"]
@@ -155,11 +160,18 @@ class QuestReader(threading.Thread):
 
             if input_data[self._stop_btn] and (self._prev_data is None or not self._prev_data[self._stop_btn]):
                 print("reset successful pressed: resetting env")
-                with self._env_lock:
+                with self._reset_lock:
                     # set successful
                     self._env.get_wrapper_attr("success")()
+                    # sleep to allow to let the robot reach the goal
+                    sleep(1)
                     # this might also move the robot to the home position
                     self._env.reset()
+                    for controller in self.controller_names:
+                        self._offset_pose[controller] = Pose()
+                        self._last_controller_pose[controller] = Pose()
+                        self._grp_pos[controller] = 1
+                    continue
 
             # reset unsuccessful
             if input_data[self._unsuccessful_btn] and (
@@ -261,17 +273,17 @@ class QuestReader(threading.Thread):
             if self._exit_requested:
                 self._step_env = False
                 break
-            transforms, grippers = self.next_action()
-            actions = {}
-            for robot, transform in transforms.items():
-                action = dict(
-                    LimitedTQuatRelDictType(tquat=np.concatenate([transform.translation(), transform.rotation_q()]))  # type: ignore
-                )
+            with self._reset_lock:
+                transforms, grippers = self.next_action()
+                actions = {}
+                for robot, transform in transforms.items():
+                    action = dict(
+                        LimitedTQuatRelDictType(tquat=np.concatenate([transform.translation(), transform.rotation_q()]))  # type: ignore
+                    )
 
-                action.update(GripperDictType(gripper=grippers[robot]))
-                actions[robot] = action
+                    action.update(GripperDictType(gripper=grippers[robot]))
+                    actions[robot] = action
 
-            with self._env_lock:
                 self._env.step(actions)
             rate_limiter()
 
@@ -279,7 +291,7 @@ class QuestReader(threading.Thread):
 def main():
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
 
-        camera_set = HardwareCameraSet([default_realsense(CAMERA_DICT)]) if CAMERA_DICT is not None else None  # type: ignore
+        camera_set = HardwareCameraSet([default_realsense(CAMERA_DICT), default_digit(DIGIT_DICT)]) if CAMERA_DICT is not None else None  # type: ignore
         env_rel = RCSFR3MultiEnvCreator()(
             name2ip=ROBOT2IP,
             camera_set=camera_set,
