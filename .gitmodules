@@ -1,0 +1,9 @@
+[submodule "models"]
+	path = models
+	url = git@gitos.rrze.fau.de:utn-machine-intelligence/lab/models.git
+[submodule "RCSToolBox"]
+	path = RCSToolBox
+	url = https://github.com/RobotControlStack/RCSToolBox.git
+[submodule "agents"]
+	path = agents
+	url = https://github.com/RobotControlStack/agents.git
