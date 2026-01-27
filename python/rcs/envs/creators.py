@@ -99,7 +99,7 @@ class SimEnvCreator(EnvCreator):
 
         if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
             gripper = sim.SimGripper(simulation, gripper_cfg)
-            env = GripperWrapper(env, gripper, binary=True)
+            env = GripperWrapper(env, gripper, binary=False)
         else:
             gripper = None
 

@@ -712,6 +712,7 @@ class GripperWrapper(ActObsInfoWrapper):
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
+        # breakpoint()
         if self.binary:
             observation[self.gripper_key] = (
                 self._last_gripper_cmd if self._last_gripper_cmd is not None else self.BINARY_GRIPPER_OPEN
