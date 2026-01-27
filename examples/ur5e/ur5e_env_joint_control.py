@@ -54,6 +54,10 @@ def main():
         gripper_config.joints = ["right_driver_joint"]
         gripper_config.collision_geoms = []
         gripper_config.collision_geoms_fingers = []
+        gripper_config.max_actuator_width = 0
+        gripper_config.min_actuator_width = 1
+        gripper_config.max_joint_width = 0.0
+        gripper_config.min_joint_width = 0.8
 
         env_rel = SimEnvCreator()(
             control_mode=ControlMode.JOINTS,
