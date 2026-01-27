@@ -164,7 +164,7 @@ version_files = [
 
     # --- Panda Extension ---
     "extensions/rcs_panda/CMakeLists.txt:VERSION",
-    "extensions/rcs_panda/src/rcs_fr3/_core/__init__.pyi:__version__",
+    "extensions/rcs_panda/src/rcs_panda/_core/__init__.pyi:__version__",
     "extensions/rcs_panda/pyproject.toml:version",
     "extensions/rcs_panda/pyproject.toml:\"rcs>=(.*)\"",
 
