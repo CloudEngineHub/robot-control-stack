@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     for _ in range(10):
         # move 1cm in x direction (forward) and close gripper
-        act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
+        act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": [0]}
         obs, reward, terminated, truncated, info = env.step(act)
         print(obs)
 ```

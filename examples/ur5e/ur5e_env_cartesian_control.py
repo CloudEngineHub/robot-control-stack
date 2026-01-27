@@ -70,12 +70,12 @@ def main():
     for _ in range(100):
         for _ in range(10):
             # move 1cm in x direction (forward) and close gripper
-            act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1.0], "gripper": 0}
+            act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1.0], "gripper": [0]}
             obs, reward, terminated, truncated, info = env_rel.step(act)
             sleep(0.6)
         for _ in range(10):
             # move 1cm in negative x direction (backward) and open gripper
-            act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1.0], "gripper": 1}
+            act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1.0], "gripper": [1]}
             obs, reward, terminated, truncated, info = env_rel.step(act)
             sleep(0.6)
 

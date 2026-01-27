@@ -3,7 +3,7 @@
 import copy
 import logging
 from enum import Enum, auto
-from typing import Annotated, Any, Literal, TypeAlias, cast
+from typing import Annotated, Any, ClassVar, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
@@ -684,8 +684,8 @@ class CameraSetWrapper(ActObsInfoWrapper):
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
 
-    BINARY_GRIPPER_CLOSED = 0
-    BINARY_GRIPPER_OPEN = 1
+    BINARY_GRIPPER_CLOSED: ClassVar[list[float]] = [0]
+    BINARY_GRIPPER_OPEN: ClassVar[list[float]] = [1]
 
     def __init__(self, env, gripper: common.Gripper, binary: bool = True):
         super().__init__(env)
@@ -715,7 +715,7 @@ class GripperWrapper(ActObsInfoWrapper):
                 self._last_gripper_cmd if self._last_gripper_cmd is not None else self.BINARY_GRIPPER_OPEN
             )
         else:
-            observation[self.gripper_key] = self.gripper.get_normalized_width()
+            observation[self.gripper_key] = [self.gripper.get_normalized_width()]
 
         return observation, info
 
@@ -730,7 +730,7 @@ class GripperWrapper(ActObsInfoWrapper):
         if self.binary:
             self.gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self.gripper.open()
         else:
-            self.gripper.set_normalized_width(gripper_action)
+            self.gripper.set_normalized_width(next(gripper_action))
         self._last_gripper_cmd = gripper_action
         del action[self.gripper_key]
         return action
