@@ -8,6 +8,7 @@ version = "0.6.0"
 description="RCS integration of tacto"
 dependencies = [
     "rcs>=0.6.0",
+    "omegaconf",
     "mujoco-tacto@git+https://github.com/utn-air/mujoco-tacto.git@main"
 ]
 readme = "README.md"
