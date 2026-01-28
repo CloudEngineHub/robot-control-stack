@@ -724,7 +724,11 @@ class GripperWrapper(ActObsInfoWrapper):
         action = copy.deepcopy(action)
         assert self.gripper_key in action, "Gripper action not found."
 
-        gripper_action = np.round(action[self.gripper_key]) if self.binary else action[self.gripper_key]
+        gripper_action = action[self.gripper_key]
+        if isinstance(gripper_action, int | float):
+            gripper_action = [gripper_action]  # type: ignore
+        if self.binary:
+            gripper_action = np.round(gripper_action)
         gripper_action = np.clip(gripper_action, 0.0, 1.0)
 
         if self.binary:
