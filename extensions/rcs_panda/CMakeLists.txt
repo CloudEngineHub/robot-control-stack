@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 project(
     rcs_panda
     LANGUAGES C CXX
-    VERSION 0.6.0
+    VERSION 0.6.1
     DESCRIPTION "RCS Libfranka integration"
 )
 

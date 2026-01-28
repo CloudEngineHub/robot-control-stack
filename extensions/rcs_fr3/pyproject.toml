@@ -4,10 +4,10 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs_fr3"
-version = "0.6.0"
+version = "0.6.1"
 description="RCS libfranka integration"
 dependencies = [
-    "rcs>=0.6.0",
+    "rcs>=0.6.1",
     "frankik",
 ]
 readme = "README.md"

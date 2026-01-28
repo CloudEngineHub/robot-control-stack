@@ -4,10 +4,10 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs_so101"
-version = "0.6.0"
+version = "0.6.1"
 description="RCS SO101 module"
 dependencies = [
-    "rcs>=0.6.0",
+    "rcs>=0.6.1",
     "lerobot==0.3.3",
 ]
 readme = "README.md"

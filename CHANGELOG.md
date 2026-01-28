@@ -1,3 +1,16 @@
+## v0.6.1 (2026-01-28)
+
+### Feat
+
+- **franka**: forward controller exceptions to python
+
+### Fix
+
+- **examples**: ur5e gripper definition
+- **gripper**: gripper state as list as defined by gym space
+- **tacto**: replace hydra with omegaconf
+- **tacto**: version
+
 ## v0.6.0 (2026-01-23)
 
 ### Feat

@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_ur5e"
-version = "0.6.0"
+version = "0.6.1"
 description="RCS UR5e module"
 dependencies = [
-    "rcs>=0.6.0",
+    "rcs>=0.6.1",
     "ur_rtde==1.6.1",
 ]
 readme = "README.md"
