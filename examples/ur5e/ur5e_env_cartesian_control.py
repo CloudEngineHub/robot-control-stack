@@ -54,6 +54,10 @@ def main():
         gripper_config.joints = ["right_driver_joint"]
         gripper_config.collision_geoms = []
         gripper_config.collision_geoms_fingers = []
+        gripper_config.max_actuator_width = 0
+        gripper_config.min_actuator_width = 1
+        gripper_config.max_joint_width = 0.0
+        gripper_config.min_joint_width = 0.8
 
         env_rel = SimEnvCreator()(
             control_mode=ControlMode.CARTESIAN_TQuat,
@@ -70,12 +74,12 @@ def main():
     for _ in range(100):
         for _ in range(10):
             # move 1cm in x direction (forward) and close gripper
-            act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1.0], "gripper": 0}
+            act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1.0], "gripper": [0]}
             obs, reward, terminated, truncated, info = env_rel.step(act)
             sleep(0.6)
         for _ in range(10):
             # move 1cm in negative x direction (backward) and open gripper
-            act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1.0], "gripper": 1}
+            act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1.0], "gripper": [1]}
             obs, reward, terminated, truncated, info = env_rel.step(act)
             sleep(0.6)
 

@@ -5,8 +5,8 @@ from typing import Any
 
 import cv2
 import gymnasium as gym
-import hydra
 import tacto
+from omegaconf import OmegaConf
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,8 @@ class TactoSimWrapper(gym.Wrapper):
         if tacto_bg is None:
             tacto_bg = str(files("tacto") / "assets" / "bg_digit_240_320.jpg")
             logger.warning(f"No tacto_bg provided, using default from package: {tacto_bg}")
-        hydra.initialize_config_dir(tacto_config)
-        t_config = hydra.compose("digit.yaml")
+        config_path = os.path.join(tacto_config, "digit.yaml")
+        t_config = OmegaConf.load(config_path)
         self.tacto_sensor = tacto.Sensor(**t_config.tacto, background=cv2.imread(tacto_bg))
         self.tacto_fps = tacto_fps
         self.tacto_last_render = -1
