@@ -19,16 +19,24 @@ logger = logging.getLogger(__name__)
 class FR3BaseArucoCalibration(CalibrationStrategy):
     """Calibration with a 3D printed aruco marker that fits around the vention's FR3 base mounting plate."""
 
-    def __init__(self, camera_name: str):
+    def __init__(
+        self,
+        camera_name: str,
+        force: bool = False,
+        expire: int = 3600,
+        show_live_window: bool = False,
+    ):
         # base frame to camera, world to base frame
         self._cache = dc.Cache(Path.home() / ".cache" / "rcs")
-        self._extrinsics: np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None = (
-            self._cache.get(f"{camera_name}_extrinsics")
-        )  # None
+        self._extrinsics: np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None = None
         self.camera_name = camera_name
         self.tag_to_world = common.Pose(
             rpy_vector=np.array([np.pi, 0, -np.pi / 2]), translation=np.array([0.145, 0, 0])  # type: ignore
         ).pose_matrix()
+        self.force = force
+        self.expire = expire
+        self.show_live_window = show_live_window
+
 
     def calibrate(
         self,
@@ -36,6 +44,9 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]],
         lock: threading.Lock,
     ) -> bool:
+        self._extrinsics = self._cache.get(f"{self.camera_name}_extrinsics")
+        if self._extrinsics is not None and not self.force:
+            return True
         logger.info("Calibrating camera %s. Position it as you wish and press enter.", self.camera_name)
         input()
         tries = 3
@@ -53,12 +64,14 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
                 frames.append(sample.camera.color.data.copy())
         # print(frames) # Removed print for cleaner logs, optional
 
-        _, tag_to_cam = get_average_marker_pose(frames, intrinsics=intrinsics, calib_tag_id=9, show_live_window=False)
+        _, tag_to_cam = get_average_marker_pose(
+            frames, intrinsics=intrinsics, calib_tag_id=9, show_live_window=self.show_live_window
+        )
 
         cam_to_world = self.tag_to_world @ np.linalg.inv(tag_to_cam)
         world_to_cam = np.linalg.inv(cam_to_world)
         self._extrinsics = world_to_cam  # type: ignore
-        self._cache.set(f"{self.camera_name}_extrinsics", world_to_cam, expire=3600)
+        self._cache.set(f"{self.camera_name}_extrinsics", world_to_cam, expire=self.expire)
         return True
 
     def get_extrinsics(self) -> np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None:
@@ -105,6 +118,7 @@ def get_average_marker_pose(
             # wait for key press
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+            sleep(0.1)
     if last_frame is None:
         msg = "No frames were processed, cannot calculate average pose. Check if the tag is visible."
         raise ValueError(msg)

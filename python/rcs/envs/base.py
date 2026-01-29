@@ -148,6 +148,7 @@ class CameraDataDictType(RCSpaceType):
             dtype=np.float64,
         ),
     ]
+    timestamp: Annotated[float | None, gym.spaces.Box(low=0.0, high=np.inf, shape=(), dtype=np.float64)]
 
 
 class CameraDictType(RCSpaceType):
@@ -204,7 +205,7 @@ class RobotEnv(gym.Env):
     y
     """
 
-    def __init__(self, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = False):
+    def __init__(self, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = True):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
@@ -586,7 +587,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
     RGB_KEY = "rgb"
     DEPTH_KEY = "depth"
 
-    def __init__(self, env, camera_set: BaseCameraSet, include_depth: bool = False):
+    def __init__(self, env, camera_set: BaseCameraSet, include_depth: bool = True):
         super().__init__(env)
         self.unwrapped: RobotEnv
         self.camera_set = camera_set
@@ -617,16 +618,16 @@ class CameraSetWrapper(ActObsInfoWrapper):
                     for name in camera_set.camera_names
                 }
             )
-        self.observation_space.spaces.update(
-            get_space(
-                CameraDictType,
-                child_dict_keys_to_unfold={
-                    "camera_names": camera_set.camera_names,
-                    "camera_type": [self.RGB_KEY, self.DEPTH_KEY] if self.include_depth else [self.RGB_KEY],
-                },
-                params=params,
-            ).spaces
-        )
+        # self.observation_space.spaces.update(
+        #     get_space(
+        #         CameraDictType,
+        #         child_dict_keys_to_unfold={
+        #             "camera_names": camera_set.camera_names,
+        #             "camera_type": [self.RGB_KEY, self.DEPTH_KEY] if self.include_depth else [self.RGB_KEY],
+        #         },
+        #         params=params,
+        #     ).spaces
+        # )
         self.camera_key = get_space_keys(CameraDictType)[0]
 
     def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict, dict[str, Any]]:
@@ -655,8 +656,9 @@ class CameraSetWrapper(ActObsInfoWrapper):
                         data=frame.camera.color.data,
                         intrinsics=frame.camera.color.intrinsics,
                         extrinsics=frame.camera.color.extrinsics,
+                        timestamp=frame.camera.color.timestamp,
                     ),
-                    self.DEPTH_KEY: CameraDataDictType(data=frame.camera.depth.data, intrinsics=frame.camera.depth.intrinsics, extrinsics=frame.camera.depth.extrinsics),  # type: ignore
+                    self.DEPTH_KEY: CameraDataDictType(data=frame.camera.depth.data, intrinsics=frame.camera.depth.intrinsics, extrinsics=frame.camera.depth.extrinsics, timestamp=frame.camera.depth.timestamp),  # type: ignore
                 }
                 if check_depth(frame.camera.depth)
                 else {
@@ -664,12 +666,14 @@ class CameraSetWrapper(ActObsInfoWrapper):
                         data=frame.camera.color.data,
                         intrinsics=frame.camera.color.intrinsics,
                         extrinsics=frame.camera.color.extrinsics,
+                        timestamp=frame.camera.color.timestamp,
                     ),
                 }
             )
             for camera_name, frame in frameset.frames.items()
         }
         observation[self.camera_key] = frame_dict
+        observation["avg_frame_timestamp"] = frameset.avg_timestamp
 
         info["camera_available"] = True
         if frameset.avg_timestamp is not None:
@@ -704,7 +708,7 @@ class GripperWrapper(ActObsInfoWrapper):
         super().close()
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
-        self.gripper.reset()
+        # self.gripper.reset()
         self._last_gripper_cmd = None
         return super().reset(**kwargs)
 

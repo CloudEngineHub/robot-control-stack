@@ -23,6 +23,7 @@ class DigitCam(HardwareCamera):
         for name, camera in self.cameras.items():
             digit = Digit(camera.identifier, name)
             digit.connect()
+            # digit.set_fps(camera.frame_rate)
             self._cameras[name] = digit
 
     @property
@@ -33,7 +34,7 @@ class DigitCam(HardwareCamera):
     def poll_frame(self, camera_name: str) -> Frame:
         """Polls the frame from the camera with the given name."""
         digit = self._cameras[camera_name]
-        frame = digit.get_frame()
+        frame = digit.get_frame().copy()
         color = DataFrame(data=frame)
         # rgb to bgr as expected by opencv
         # color = DataFrame(data=frame[:, :, ::-1])

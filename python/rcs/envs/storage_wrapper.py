@@ -38,10 +38,8 @@ class StorageWrapper(gym.Wrapper):
         1. **Write-on-Receipt:** Data is written to disk in small, atomic batches immediately
            after being generated. This ensures that if the process crashes (segfault, OOM),
            previous batches are already safe on disk.
-        2. **Date Partitioning:** Files are organized by date (YYYY-MM-DD) to scale to
-           thousands of episodes without exhausting file system inodes.
-        3. **Consolidation:** On a clean exit (`close()`), the many small batch files are
-           merged into larger, optimized Parquet files.
+        2. **Consolidation:** On a clean exit (`close()`), the many small batch files are
+           merged into larger, optimized Parquet files (256MB shards).
 
         Observation handling:
         - Expects observations to be dictionaries.
@@ -94,36 +92,61 @@ class StorageWrapper(gym.Wrapper):
         self.queue: Queue[pa.Table | pa.RecordBatch] = Queue(maxsize=2)
         self.uuid = uuid4()
 
+        self.cube_pos_tquat: np.ndarray | None = None
         self._writer_future = self.thread_pool.submit(self._writer_worker)
+
+    def set_cube_pos_tquat(self, pos_tquat: np.ndarray):
+        self.cube_pos_tquat = pos_tquat
 
     @staticmethod
     def consolidate(base_dir: str, schema: Optional[pa.Schema] = None):
         """
-        Static method to merge small Parquet files into larger ones.
-        Can be used by the class or an external CLI to clean up a dataset directory.
+        Merges small Parquet files into files of approx 256MB.
         """
         if not os.path.exists(base_dir):
             print(f"Directory {base_dir} does not exist.")
             return
 
-        part_scheme = ds.partitioning(
-            schema=pa.schema(fields=[pa.field("date", pa.string())]),
-            flavor="filename",
-        )
+        # Define the target size
+        TARGET_FILE_SIZE_MB = 256
+
+        # part_scheme = ds.partitioning(
+        #     schema=pa.schema(fields=[pa.field("date", pa.string())]),
+        #     flavor="filename",
+        # )
 
         print(f"Consolidating files in {base_dir}...")
         temp_dir = str(base_dir).rstrip("/") + "_temp"
 
         try:
-            # Read existing dataset
-            dataset = ds.dataset(base_dir, format="parquet", partitioning=part_scheme, schema=schema)
-
+            # 1. Read existing dataset
+            # dataset = ds.dataset(base_dir, format="parquet", partitioning=part_scheme, schema=schema)
+            dataset = ds.dataset(base_dir, format="parquet", schema=schema)
+            
             try:
-                if dataset.count_rows() == 0:
+                total_rows = dataset.count_rows()
+                if total_rows == 0:
                     return
             except (IndexError, ValueError):
                 return
 
+            # 2. Calculate optimal rows per file
+            # We estimate: (Total Disk Bytes / Total Rows) = Avg Bytes Per Row
+            total_bytes = sum(os.path.getsize(f) for f in dataset.files)
+            
+            # Avoid division by zero
+            if total_bytes > 0 and total_rows > 0:
+                avg_bytes_per_row = total_bytes / total_rows
+                target_bytes = TARGET_FILE_SIZE_MB * 1024 * 1024
+                max_rows_calc = int(target_bytes / avg_bytes_per_row)
+            else:
+                max_rows_calc = 1000000 # Fallback safe default
+
+            print(f"  -> Input: {total_bytes / (1024**3):.2f} GB | {total_rows} rows")
+            print(f"  -> Target: ~{TARGET_FILE_SIZE_MB} MB per file")
+            print(f"  -> Calculated split: {max_rows_calc} rows per file")
+
+            # 3. Write with max_rows_per_file
             ds.write_dataset(
                 data=dataset,
                 base_dir=temp_dir,
@@ -131,6 +154,10 @@ class StorageWrapper(gym.Wrapper):
                 schema=schema,
                 partitioning=part_scheme,
                 existing_data_behavior="overwrite_or_ignore",
+                # The critical parameters for splitting:
+                max_rows_per_file=max_rows_calc,
+                min_rows_per_group=0,  # Let Arrow decide group size based on rows
+                max_rows_per_group=max_rows_calc, # Usually 1 row group per file is fine for 256MB
             )
 
             shutil.rmtree(base_dir)
@@ -170,10 +197,10 @@ class StorageWrapper(gym.Wrapper):
                 basename_template=template,
                 max_rows_per_group=self.max_rows_per_group,
                 max_rows_per_file=self.max_rows_per_file,
-                partitioning=ds.partitioning(
-                    schema=pa.schema(fields=[pa.field("date", pa.string())]),
-                    flavor="filename",
-                ),
+                # partitioning=ds.partitioning(
+                #     schema=pa.schema(fields=[pa.field("date", pa.string())]),
+                #     flavor="filename",
+                # ),
             )
 
     def _flush(self):
@@ -259,10 +286,12 @@ class StorageWrapper(gym.Wrapper):
                     "reward": reward,
                     "step": self.step_cnt,
                     "uuid": self.uuid.hex,
-                    "date": datetime.date.today().isoformat(),
+                    # "date": datetime.date.today().isoformat(),
                     "success": self._success,
                     "action": self._prev_action,
                     "instruction": self.instruction,
+                    "cube_pos_tquat": self.cube_pos_tquat,
+                    "timestamp": datetime.now().timestamp(),
                 }
             )
             self._prev_action = action

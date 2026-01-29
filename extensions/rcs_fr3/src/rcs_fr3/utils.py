@@ -1,3 +1,4 @@
+import numpy as np
 from rcs_fr3._core import hw
 
 import rcs
@@ -8,9 +9,11 @@ def default_fr3_hw_robot_cfg(async_control: bool = False) -> hw.FR3Config:
     robot_cfg = hw.FR3Config()
     robot_cfg.robot_type = rcs.scenes["fr3_empty_world"].robot_type
     robot_cfg.kinematic_model_path = rcs.scenes["fr3_empty_world"].mjcf_robot
-    robot_cfg.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
+    # robot_cfg.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
+    robot_cfg.tcp_offset = rcs.common.Pose(pose_matrix=np.array([[0.707, 0.707, 0, 0], [-0.707, 0.707, 0, 0], [0, 0, 1,
+        0.15], [0, 0, 0, 1]]))
     robot_cfg.attachment_site = "attachment_site_0"
-    robot_cfg.speed_factor = 0.1
+    robot_cfg.speed_factor = 0.2
     robot_cfg.ik_solver = hw.IKSolver.rcs_ik
     robot_cfg.async_control = async_control
     return robot_cfg
