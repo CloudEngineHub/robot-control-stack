@@ -21,6 +21,7 @@ from rcs.envs.space_utils import (
 )
 
 from rcs import common
+from rcs.sensors import BaseTorqueSensor
 
 _logger = logging.getLogger(__name__)
 
@@ -157,6 +158,17 @@ class CameraDictType(RCSpaceType):
             Annotated[str, "camera_type"],  # "rgb" or "depth"
             CameraDataDictType,
         ],
+    ]
+
+class TorqueDictType(RCSpaceType):
+    torque: Annotated[
+        VecType,
+        lambda dof=7: gym.spaces.Box(
+            low=np.array(dof * [-np.inf]),
+            high=np.array(dof * [np.inf]),
+            dtype=np.float64,
+        ),
+        "torque",
     ]
 
 
@@ -812,3 +824,20 @@ class HandWrapper(ActObsInfoWrapper):
 
     def close(self):
         self._hand.close()
+
+
+class TorqueWrapper(ActObsInfoWrapper):
+
+    def __init__(self, env, torque_sensor: BaseTorqueSensor):
+        super().__init__(env)
+        self.unwrapped: RobotEnv
+        self.observation_space: gym.spaces.Dict
+        self.sensor = torque_sensor
+        self.observation_space.spaces.update(get_space(TorqueDictType, params={"torque": {"dof": self.sensor.dof()}}).spaces)
+        self.torque_key = get_space_keys(TorqueDictType)[0]
+
+
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        observation = copy.deepcopy(observation)
+        observation[self.torque_key] = self.sensor.torque()
+        return observation, info

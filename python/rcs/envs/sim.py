@@ -2,7 +2,9 @@ import logging
 from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
+import mujoco
 import numpy as np
+from rcs._core import common
 from rcs.envs.base import (
     ControlMode,
     GripperWrapper,
@@ -12,6 +14,7 @@ from rcs.envs.base import (
 )
 from rcs.envs.space_utils import ActObsInfoWrapper
 from rcs.envs.utils import default_sim_robot_cfg, default_sim_tilburg_hand_cfg
+from rcs.sensors import BaseTorqueSensor
 from rcs.utils import SimpleFrameRate
 
 import rcs
@@ -472,3 +475,24 @@ class DigitalTwin(gym.Wrapper):
         twin_obs, _, _, _, _ = self.twin_env.step(obs)
         info["twin_obs"] = twin_obs
         return obs, reward, terminated, truncated, info
+
+
+class SimTorqueSensor(BaseTorqueSensor):
+    def __init__(self, simulation: sim.Sim, cfg: sim.SimRobotConfig):
+        self.sim = simulation
+        self.cfg = cfg
+
+        self.idxs = [
+            self.sim.model.jnt_dofadr[mujoco.mj_name2id(self.sim.model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)]
+            for joint_name in cfg.joints
+        ]
+
+    def dof(self):
+        return common.robots_meta_config(self.cfg.robot_type).dof
+
+    def torque(self):
+        # TODO: get this mapping by joint names
+        return self.sim.data.qfrc_constraint[self.idxs]
+
+
+# TODO: implement this torque sensor for the fr3
