@@ -104,7 +104,7 @@ def main():
                 urdf=fr3_cfg.kinematic_model_path.endswith(".urdf"),
             )
             robot = hw.Franka(ROBOT_IP, ik)
-            robot.set_config(robot_cfg)  # type: ignore
+            robot.set_config(fr3_cfg)  # type: ignore
 
             gripper_cfg_hw = hw.FHConfig()
             gripper_cfg_hw.epsilon_inner = gripper_cfg_hw.epsilon_outer = 0.1
