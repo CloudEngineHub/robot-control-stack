@@ -30,12 +30,14 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: upgrade pip
+        run: pip install --upgrade pip
       - name: Install building dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install --group build_deps
       - name: Install wheel
         run: python -m pip install wheel
       - name: Install the package
-        run: python -m pip install -ve '.[dev]'
+        run: python -m pip install -ve . --group dev
       - name: Check formatting
         run: make pycheckformat
       - name: Code linting
@@ -91,11 +93,13 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: upgrade pip
+        run: pip install --upgrade pip
       - name: Install build dependencies
-        run: pip install -r requirements.txt
+        run: pip install --group build_deps
 
       - name: Install rcs
-        run: pip install -ve '.[dev]'
+        run: pip install -ve . --group dev
 
       - name: Install extension
         run: pip install -ve extensions/${{ matrix.extension }}
@@ -135,10 +139,12 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: upgrade pip
+        run: pip install --upgrade pip
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: pip install --group build_deps
       - name: Install RCS
-        run: pip install -ve '.[dev]'
+        run: pip install -ve . --group dev
       - name: Install extension
         run: pip install -ve extensions/${{ matrix.extension }}
       - name: Check that stub files are up-to-date

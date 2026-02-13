@@ -30,9 +30,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: upgrade pip
+        run: pip install --upgrade pip
       - name: Install Python dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install --group dev --group build_deps
       - name: Check clang format
         run: make cppcheckformat
       # - name: Clang Tidy
@@ -59,9 +60,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: upgrade pip
+        run: pip install --upgrade pip
       - name: Install Python dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install --group dev --group build_deps
       - name: GCC build
         run: make gcccompile PYTHON_EXECUTABLE=${{ steps.setup-python.outputs.python-path }}
 

@@ -17,12 +17,13 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
     ```shell
     conda create -n rcs python=3.11
     conda activate rcs
+    pip install 'pip>=25.1'
     ```
 
 3.  Install the package dependencies:
 
     ```shell
-    pip install -r requirements.txt
+    pip install --group build_deps
     ```
 
 ### Building RCS

@@ -74,7 +74,7 @@ WORKDIR /home/devuser/project
 RUN pip install --upgrade pip setuptools
 
 # Install development dependencies
-RUN pip install -r requirements.txt
+RUN pip install --group build_deps
 
 # Install the package in editable mode (CMake + pybind11 + scikit-build-core triggered)
 RUN pip install -e . --no-cache-dir --verbose

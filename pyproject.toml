@@ -15,7 +15,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "rcs"
 version = "0.6.1"
-description = "Python Interface for libfranka to control the Franka Research 3 Robot"
+description = "A Lean Ecosystem for Robot Learning at Scale"
 dependencies = [
   "websockets>=11.0",
   "requests~=2.31",
@@ -25,22 +25,20 @@ dependencies = [
   "absl-py~=2.1",
   "etils[epath]>=1.7.0",
   "glfw~=2.7",
-  "pyopengl==3.1.9",
-  "pynput~=1.7.7",
-  "pillow~=10.3",
-  "python-dotenv==1.0.1",
+  "pyopengl~=3.1.9",
+  "pynput>=1.7.7",
+  "pillow>=10.3",
+  "python-dotenv>=1.0.1",
   "opencv-python~=4.10.0.84",
-  # NOTE: when changing the mujoco version, also change it in requirements.txt
-  "mujoco==3.2.6",
-  # NOTE: Same for pinocchio (pin)
-  "pin==3.7.0",
   "tilburg-hand",
   "digit-interface",
   "pyopengl>=3.1.9",
   "ompl>=1.7.0",
-  "rpyc==6.0.2",
+  "rpyc~=6.0.2",
   "pyarrow",
   "simplejpeg",
+  "mujoco==3.2.6",
+  "pin==3.7.0",
 ]
 readme = "README.md"
 maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
@@ -50,10 +48,9 @@ authors = [
   { name = "Seongjin Bien", email = "seongjin.bien@utn.de" },
 ]
 requires-python = ">=3.10"
-# license = "AGPL-3.0-or-later"
 license = { file = "LICENSE" }
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
   "ruff==0.3.2",
   "black==24.1.1",
@@ -68,6 +65,12 @@ dev = [
   "clang",
   "clang-format",
   "clang-tidy",
+  "ninja",
+  "cmake",
+]
+build_deps = [
+  "mujoco==3.2.6",
+  "pin==3.7.0",
 ]
 
 

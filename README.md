@@ -112,7 +112,8 @@ conda create -n rcs python=3.11
 conda activate rcs
 conda install conda-forge::eigen conda-forge::glfw
 # or sudo apt install $(cat debian_deps.txt)
-pip install -r requirements.txt
+pip install 'pip>=25.1'
+pip install --group build_deps
 
 # install rcs
 pip install -ve .
@@ -136,23 +137,22 @@ pip install -ve extensions/rcs_fr3
 For a full list of extensions and detailed documentation, visit [robotcontrolstack.org/extensions](https://robotcontrolstack.org/extensions).
 
 ## Documentation
-
-
 For full documentation, including installation, usage, and API reference, please visit:
-
 **[robotcontrolstack.org](https://robotcontrolstack.org)**
 
-## Citation
+## Contribution
+For contribution guidelines checkout [robotcontrolstack.org/contributing](https://robotcontrolstack.org/contributing)
 
+## Citation
 If you find RCS useful for your academic work, please consider citing it:
 
 ```bibtex
-@misc{juelg2025robotcontrolstack,
+@inproceedings{juelg2026robotcontrolstack,
   title={{Robot Control Stack}: {A} Lean Ecosystem for Robot Learning at Scale}, 
   author={Tobias J{\"u}lg and Pierre Krack and Seongjin Bien and Yannik Blei and Khaled Gamal and Ken Nakahara and Johannes Hechtl and Roberto Calandra and Wolfram Burgard and Florian Walter},
-  year={2025},
-  howpublished = {\url{https://arxiv.org/abs/2509.14932}}
+  year={2026},
+  booktitle={Proc.~of the IEEE Int.~Conf.~on Robotics \& Automation (ICRA)},
+  note={Accepted for publication.}
 }
 ```
-
 For more scientific info, visit the [paper website](https://robotcontrolstack.github.io/).
