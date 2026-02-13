@@ -5,11 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rcs_xarm7"
 version = "0.6.1"
-description="RCS xArm7 module"
-dependencies = [
-    "rcs>=0.6.1",
-    "xarm-python-sdk==1.17.0",
-]
+description = "RCS xArm7 module"
+dependencies = ["rcs>=0.6.1", "xarm-python-sdk==1.17.0"]
 readme = "README.md"
 maintainers = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
