@@ -98,25 +98,28 @@ For common environment compositions factory functions such as `rcs.envs.creators
 This and other example can be found in the [examples](examples/) folder.
 
 ## Installation
+### From Source
 
-We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
+Make sure that common build tools i.e. `build-essential` and a C++ compiler like `gcc` or `clang` are installed on your system/conda/docker.
 
-1.  **System Dependencies**:
-    ```shell
-    sudo apt install $(cat debian_deps.txt)
-    ```
+RCS works best in python 3.11, all extensions have been tested to work in 3.11.
+- For python >3.11 the `rcs_realsense` extension wont work for the pyrealsense2 version that RCS is using.
+- For python >3.12 the ompl python module is not available on pypi as of now. If OMPL is not used, it's save to remove this dependency in the pyproject.toml.
 
-2.  **Python Environment**:
-    ```shell
-    conda create -n rcs python=3.11
-    conda activate rcs
-    pip install -r requirements.txt
-    ```
+```shell
+# setup environment
+conda create -n rcs python=3.11
+conda activate rcs
+conda install conda-forge::eigen conda-forge::glfw
+# or sudo apt install $(cat debian_deps.txt)
+pip install -r requirements.txt
 
-3.  **Install RCS**:
-    ```shell
-    pip install -ve . --no-build-isolation
-    ```
+# install rcs
+pip install -ve .
+```
+
+### Via PyPI/pip
+Coming soon...
 
 ## Hardware Extensions
 
@@ -125,7 +128,9 @@ RCS supports various hardware extensions (e.g., FR3, xArm7, RealSense). These ar
 To install an extension:
 
 ```shell
-pip install -ve extensions/rcs_fr3 --no-build-isolation
+# make sure to install system libraries before
+sudo apt install $(cat debian_deps.txt)
+pip install -ve extensions/rcs_fr3
 ```
 
 For a full list of extensions and detailed documentation, visit [robotcontrolstack.org/extensions](https://robotcontrolstack.org/extensions).
