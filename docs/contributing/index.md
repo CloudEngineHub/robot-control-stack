@@ -12,7 +12,7 @@ We welcome contributions to the Robot Control Stack!
 Install the development dependencies:
 ```shell
 # from root directory
-pip install -ve '.[dev]' --no-build-isolation
+pip install -ve '.[dev]'
 ```
 
 We provide a `Makefile` with several useful commands for development.

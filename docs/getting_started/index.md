@@ -30,7 +30,7 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 Build and install RCS in editable mode:
 
 ```shell
-pip install -ve . --no-build-isolation
+pip install -ve .
 ```
 
 For a docker deployment, see the `docker` folder in the repository.
