@@ -3,10 +3,10 @@
 
 #include <math.h>
 
+#include <Eigen/Eigen>
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <Eigen/Eigen>
 #include <memory>
 #include <set>
 #include <stdexcept>

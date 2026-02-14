@@ -1,7 +1,5 @@
 build-essential
 gcc
-ninja
-cmake
 libpoco-dev
 libglfw3-dev
 libconsole-bridge-dev

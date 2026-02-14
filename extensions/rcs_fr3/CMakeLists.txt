@@ -35,10 +35,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # turn off libfranka tests
 set(BUILD_TESTS OFF)
 set(BUILD_EXAMPLES OFF)
-set(RL_BUILD_DEMOS OFF)
-set(RL_BUILD_RL_SG OFF)
-set(RL_BUILD_TESTS OFF)
-set(RL_BUILD_EXTRAS OFF)
 set(BUILD_PYTHON_INTERFACE OFF)
 set(BUILD_DOCUMENTATION OFF)
 
@@ -72,6 +68,7 @@ FetchContent_Declare(Eigen3
     EXCLUDE_FROM_ALL
 )
 
-FetchContent_MakeAvailable(libfranka pybind11 Eigen3)
+FetchContent_MakeAvailable(Eigen3)
+FetchContent_MakeAvailable(libfranka pybind11)
 
 add_subdirectory(src)
