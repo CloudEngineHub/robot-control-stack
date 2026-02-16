@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.24)
 
 project(
     rcs_fr3
@@ -66,9 +66,54 @@ FetchContent_Declare(Eigen3
     GIT_TAG 3.4.1
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
+    OVERRIDE_FIND_PACKAGE
+)
+# --- tinyxml2 ---
+FetchContent_Declare(
+    tinyxml2
+    GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
+    GIT_TAG        10.0.0
+    GIT_PROGRESS   TRUE
+    EXCLUDE_FROM_ALL
+    OVERRIDE_FIND_PACKAGE
 )
 
-FetchContent_MakeAvailable(Eigen3)
-FetchContent_MakeAvailable(libfranka pybind11)
+# --- console_bridge ---
+FetchContent_Declare(
+    console_bridge
+    GIT_REPOSITORY https://github.com/ros/console_bridge.git
+    GIT_TAG        1.0.2
+    GIT_PROGRESS   TRUE
+    EXCLUDE_FROM_ALL
+    OVERRIDE_FIND_PACKAGE
+)
+
+# --- POCO C++ Libraries ---
+set(ENABLE_TESTS OFF CACHE BOOL "Disable POCO tests" FORCE)
+set(ENABLE_DATA_MYSQL OFF CACHE BOOL "Disable POCO MySQL" FORCE)
+set(ENABLE_DATA_ODBC OFF CACHE BOOL "Disable POCO ODBC" FORCE)
+set(ENABLE_PAGECOMPILER OFF CACHE BOOL "Disable POCO PageCompiler" FORCE)
+set(ENABLE_PAGECOMPILER_FILE2PAGE OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    Poco
+    GIT_REPOSITORY https://github.com/pocoproject/poco.git
+    GIT_TAG        poco-1.13.3-release 
+    GIT_PROGRESS   TRUE
+    EXCLUDE_FROM_ALL
+    OVERRIDE_FIND_PACKAGE
+)
+
+FetchContent_MakeAvailable(pybind11 Eigen3 tinyxml2 console_bridge Poco)
+if(NOT TARGET Eigen3::Eigen3)
+    add_library(Eigen3::Eigen3 ALIAS eigen)
+endif()
+if(NOT TARGET TinyXML2::TinyXML2)
+    add_library(TinyXML2::TinyXML2 ALIAS tinyxml2)
+endif()
+if(NOT TARGET console_bridge::console_bridge)
+    add_library(console_bridge::console_bridge ALIAS console_bridge)
+endif()
+FetchContent_MakeAvailable(libfranka)
 
 add_subdirectory(src)

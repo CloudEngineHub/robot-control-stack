@@ -1,6 +1,3 @@
 build-essential
 gcc
-libpoco-dev
 libglfw3-dev
-libconsole-bridge-dev
-libtinyxml2-dev
