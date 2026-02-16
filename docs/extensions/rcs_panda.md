@@ -6,7 +6,7 @@ This extension provides support for the Franka Emika Panda robot in RCS.
 
 ```shell
 # from root directory
-pip install -ve extensions/rcs_panda --no-build-isolation
+pip install -ve extensions/rcs_panda
 ```
 
 ## Usage

@@ -5,11 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rcs_ur5e"
 version = "0.6.1"
-description="RCS UR5e module"
-dependencies = [
-    "rcs>=0.6.1",
-    "ur_rtde==1.6.1",
-]
+description = "RCS UR5e module"
+dependencies = ["rcs>=0.6.1", "ur_rtde==1.6.1"]
 readme = "README.md"
 maintainers = [
   { name = "Johannes Hechtl", email = "johannes.hechtl@siemens.com" },
@@ -26,4 +23,3 @@ target-version = ["py310"]
 
 [tool.isort]
 profile = "black"
-
