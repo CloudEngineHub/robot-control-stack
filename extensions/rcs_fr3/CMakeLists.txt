@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 project(
     rcs_fr3
     LANGUAGES C CXX
-    VERSION 0.6.1
+    VERSION 0.6.2
     DESCRIPTION "RCS Libfranka integration"
 )
 

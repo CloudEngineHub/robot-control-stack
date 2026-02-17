@@ -1,3 +1,15 @@
+## v0.6.2 (2026-02-17)
+
+### Feat
+
+- **realsense**: align depth and rgb option (#257)
+
+### Fix
+
+- **panda**: cfg arg in constructor available in py (#258)
+- **examples**: wrong named robot config var
+- **franka**: left over ik refactor (#256)
+
 ## v0.6.1 (2026-01-28)
 
 ### Feat

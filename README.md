@@ -110,7 +110,7 @@ RCS works best in python 3.11, all extensions have been tested to work in 3.11.
 # setup environment
 conda create -n rcs python=3.11
 conda activate rcs
-conda install conda-forge::eigen conda-forge::glfw
+conda install conda-forge::glfw
 # or sudo apt install $(cat debian_deps.txt)
 pip install 'pip>=25.1'
 pip install --group build_deps
@@ -129,8 +129,6 @@ RCS supports various hardware extensions (e.g., FR3, xArm7, RealSense). These ar
 To install an extension:
 
 ```shell
-# make sure to install system libraries before
-sudo apt install $(cat debian_deps.txt)
 pip install -ve extensions/rcs_fr3
 ```
 
