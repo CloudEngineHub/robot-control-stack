@@ -66,9 +66,12 @@ class Franka : public common::Robot {
   franka::RobotState curr_state;
   std::mutex interpolator_mutex;
   Controller running_controller = Controller::none;
+  std::exception_ptr background_exception = nullptr;
+  std::mutex exception_mutex;
   void osc();
   void joint_controller();
   void zero_torque_controller();
+  void check_for_background_errors();
 
  public:
   Franka(const std::string& ip,

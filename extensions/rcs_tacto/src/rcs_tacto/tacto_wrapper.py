@@ -5,8 +5,8 @@ from typing import Any
 
 import cv2
 import gymnasium as gym
-import hydra
 import tacto
+from omegaconf import OmegaConf
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,8 @@ class TactoSimWrapper(gym.Wrapper):
         if tacto_bg is None:
             tacto_bg = str(files("tacto") / "assets" / "bg_digit_240_320.jpg")
             logger.warning(f"No tacto_bg provided, using default from package: {tacto_bg}")
-        hydra.initialize_config_dir(tacto_config)
-        t_config = hydra.compose("digit.yaml")
+        config_path = os.path.join(tacto_config, "digit.yaml")
+        t_config = OmegaConf.load(config_path)
         self.tacto_sensor = tacto.Sensor(**t_config.tacto, background=cv2.imread(tacto_bg))
         self.tacto_fps = tacto_fps
         self.tacto_last_render = -1
@@ -82,9 +82,9 @@ class TactoSimWrapper(gym.Wrapper):
         self.tacto_last_render = -1  # Reset last render time
         colors, depths = self.tacto_sensor.render(self.model, self.data)
         for site, color, depth in zip(self.tacto_sites, colors, depths, strict=False):
-            obs.setdefault("tacto", {}).setdefault(site, {}).setdefault("rgb", {})["data"] = color
+            obs.setdefault("frames", {}).setdefault(f"tactile_{site}", {}).setdefault("rgb", {})["data"] = color
             if self.enable_depth:
-                obs.setdefault("tacto", {}).setdefault(site, {}).setdefault("depth", {})["data"] = depth
+                obs.setdefault("frames", {}).setdefault(f"tactile_{site}", {}).setdefault("depth", {})["data"] = depth
         return obs, info
 
     def step(self, action: dict[str, Any]):
@@ -94,7 +94,9 @@ class TactoSimWrapper(gym.Wrapper):
             self.tacto_sensor.updateGUI(colors, depths) if self.visualize else None
             self.tacto_last_render = self.data.time
             for site, color, depth in zip(self.tacto_sites, colors, depths, strict=False):
-                obs.setdefault("tacto", {}).setdefault(site, {}).setdefault("rgb", {})["data"] = color
+                obs.setdefault("frames", {}).setdefault(f"tactile_{site}", {}).setdefault("rgb", {})["data"] = color
                 if self.enable_depth:
-                    obs.setdefault("tacto", {}).setdefault(site, {}).setdefault("depth", {})["data"] = depth
+                    obs.setdefault("frames", {}).setdefault(f"tactile_{site}", {}).setdefault("depth", {})[
+                        "data"
+                    ] = depth
         return obs, reward, done, truncated, info

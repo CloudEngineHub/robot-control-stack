@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.19)
 project(
     rcs_so101
     LANGUAGES C CXX
-    VERSION 0.5.2
+    VERSION 0.6.2
     DESCRIPTION "RCS so101 ik"
 )
 
@@ -40,8 +40,7 @@ set(BUILD_DOCUMENTATION OFF)
 
 include(FetchContent)
 
-find_package(Eigen3 REQUIRED)
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 
@@ -51,6 +50,12 @@ FetchContent_Declare(pybind11
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
-FetchContent_MakeAvailable(pybind11)
+FetchContent_Declare(Eigen3
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG 3.4.1
+    GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(pybind11 Eigen3)
 
 add_subdirectory(src)

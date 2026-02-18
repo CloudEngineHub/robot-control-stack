@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.24)
 
 project(
     rcs_fr3
     LANGUAGES C CXX
-    VERSION 0.5.2
+    VERSION 0.6.2
     DESCRIPTION "RCS Libfranka integration"
 )
 
@@ -35,26 +35,25 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # turn off libfranka tests
 set(BUILD_TESTS OFF)
 set(BUILD_EXAMPLES OFF)
-set(RL_BUILD_DEMOS OFF)
-set(RL_BUILD_RL_SG OFF)
-set(RL_BUILD_TESTS OFF)
-set(RL_BUILD_EXTRAS OFF)
 set(BUILD_PYTHON_INTERFACE OFF)
 set(BUILD_DOCUMENTATION OFF)
 
 include(FetchContent)
 
-find_package(Eigen3 REQUIRED)
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 
 FetchContent_Declare(
     libfranka
-    GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
-    GIT_TAG 0.19.0
+    GIT_REPOSITORY https://github.com/frankarobotics/libfranka.git
+    GIT_TAG 0.20.3
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
+    # Overwrite the version check script with our dummy script
+    PATCH_COMMAND  ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SetVersionFromGit.cmake"
+        "cmake/SetVersionFromGit.cmake"
 )
 FetchContent_Declare(pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11.git
@@ -62,7 +61,59 @@ FetchContent_Declare(pybind11
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
+FetchContent_Declare(Eigen3
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG 3.4.1
+    GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
+    OVERRIDE_FIND_PACKAGE
+)
+# --- tinyxml2 ---
+FetchContent_Declare(
+    tinyxml2
+    GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
+    GIT_TAG        10.0.0
+    GIT_PROGRESS   TRUE
+    EXCLUDE_FROM_ALL
+    OVERRIDE_FIND_PACKAGE
+)
 
-FetchContent_MakeAvailable(libfranka pybind11)
+# --- console_bridge ---
+FetchContent_Declare(
+    console_bridge
+    GIT_REPOSITORY https://github.com/ros/console_bridge.git
+    GIT_TAG        1.0.2
+    GIT_PROGRESS   TRUE
+    EXCLUDE_FROM_ALL
+    OVERRIDE_FIND_PACKAGE
+)
+
+# --- POCO C++ Libraries ---
+set(ENABLE_TESTS OFF CACHE BOOL "Disable POCO tests" FORCE)
+set(ENABLE_DATA_MYSQL OFF CACHE BOOL "Disable POCO MySQL" FORCE)
+set(ENABLE_DATA_ODBC OFF CACHE BOOL "Disable POCO ODBC" FORCE)
+set(ENABLE_PAGECOMPILER OFF CACHE BOOL "Disable POCO PageCompiler" FORCE)
+set(ENABLE_PAGECOMPILER_FILE2PAGE OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    Poco
+    GIT_REPOSITORY https://github.com/pocoproject/poco.git
+    GIT_TAG        poco-1.13.3-release 
+    GIT_PROGRESS   TRUE
+    EXCLUDE_FROM_ALL
+    OVERRIDE_FIND_PACKAGE
+)
+
+FetchContent_MakeAvailable(pybind11 Eigen3 tinyxml2 console_bridge Poco)
+if(NOT TARGET Eigen3::Eigen3)
+    add_library(Eigen3::Eigen3 ALIAS eigen)
+endif()
+if(NOT TARGET TinyXML2::TinyXML2)
+    add_library(TinyXML2::TinyXML2 ALIAS tinyxml2)
+endif()
+if(NOT TARGET console_bridge::console_bridge)
+    add_library(console_bridge::console_bridge ALIAS console_bridge)
+endif()
+FetchContent_MakeAvailable(libfranka)
 
 add_subdirectory(src)

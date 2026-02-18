@@ -19,8 +19,8 @@ class PickUpDemo:
         self.unwrapped: RobotEnv = cast(RobotEnv, self.env.unwrapped)
         self.home_pose = self.unwrapped.robot.get_cartesian_position()
 
-    def _action(self, pose: Pose, gripper: float) -> dict[str, Any]:
-        return {"xyzrpy": pose.xyzrpy(), "gripper": gripper}
+    def _action(self, pose: Pose, gripper: list[float]) -> dict[str, Any]:
+        return {"xyzrpy": pose.xyzrpy(), "gripper": [gripper]}
 
     def get_object_pose(self, geom_name) -> Pose:
         model = self.env.get_wrapper_attr("sim").model
@@ -50,7 +50,7 @@ class PickUpDemo:
         goal_pose *= Pose(translation=np.array([0, 0, delta_up]), quaternion=np.array([1, 0, 0, 0]))  # type: ignore
         return self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
 
-    def execute_motion(self, waypoints: list[Pose], gripper: float = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
+    def execute_motion(self, waypoints: list[Pose], gripper: list[float] = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
         for i in range(len(waypoints)):
             obs = self.step(self._action(waypoints[i], gripper))
         return obs
@@ -61,10 +61,11 @@ class PickUpDemo:
 
     def grasp(self, geom_name: str):
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.01, num_waypoints=60)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=-0.005, num_waypoints=60)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
-        self.step(self._action(Pose(), GripperWrapper.BINARY_GRIPPER_CLOSED))
+        for _ in range(4):
+            self.step(self._action(self.unwrapped.robot.get_cartesian_position(), GripperWrapper.BINARY_GRIPPER_CLOSED))
 
         waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=60)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)

@@ -1,5 +1,3 @@
 build-essential
 gcc
-libpoco-dev
-libeigen3-dev
 libglfw3-dev

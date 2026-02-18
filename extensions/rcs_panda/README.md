@@ -4,7 +4,7 @@ Extension to control the panda with rcs.
 ## Installation
 ```shell
 # go to this directory
-pip install -ve . --no-build-isolation
+pip install -ve .
 ```
 
 Add your Panda credentials to a `.env` file like this:

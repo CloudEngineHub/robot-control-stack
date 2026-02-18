@@ -1,8 +1,8 @@
 #ifndef RCS_POSE_H
 #define RCS_POSE_H
 
-#include <eigen3/Eigen/Eigen>
-#include <eigen3/Eigen/Geometry>
+#include <Eigen/Eigen>
+#include <Eigen/Geometry>
 #include <memory>
 
 #include "utils.h"
@@ -60,6 +60,42 @@ struct RPY {
   }
 
   bool is_close(const RPY &other, double eps = 1e-8) const {
+    return (this->as_vector() - other.as_vector()).lpNorm<1>() < eps;
+  }
+};
+
+struct RotVec {
+  Eigen::AngleAxisd angle_axis;
+
+  RotVec(const Eigen::Vector3d &vec)
+      : angle_axis(vec.norm(), vec.normalized()) {}
+
+  std::string str() const {
+    double x = this->as_vector()[0];
+    double y = this->as_vector()[1];
+    double z = this->as_vector()[2];
+    return "RotVec(" + std::to_string(x) + ", " + std::to_string(y) + ", " +
+           std::to_string(z) + ")";
+  }
+
+  Eigen::Matrix3d rotation_matrix() const {
+    return angle_axis.toRotationMatrix();
+  }
+
+  Eigen::Quaterniond as_quaternion() const {
+    return Eigen::Quaterniond(angle_axis);
+  }
+
+  Eigen::Vector4d as_quaternion_vector() const {
+    return as_quaternion().coeffs();
+  }
+
+  Eigen::Vector3d as_vector() const {
+    Eigen::Vector3d rotation = angle_axis.angle() * angle_axis.axis();
+    return rotation;
+  }
+
+  bool is_close(const RotVec &other, double eps = 1e-8) const {
     return (this->as_vector() - other.as_vector()).lpNorm<1>() < eps;
   }
 };
@@ -274,6 +310,12 @@ class Pose {
    * For python bindings.
    */
   Vector6d xyzrpy() const;
+
+  /**
+   * @brief Returns the rotation vector representation of the Pose
+   * For python bindings.
+   */
+  Vector6d rotvec() const;
 
   /**
    * @brief Converts a Pose to a String

@@ -5,8 +5,8 @@
 #include <rcs/Pose.h>
 #include <rcs/utils.h>
 
-#include <eigen3/Eigen/Eigen>
-#include <eigen3/Eigen/Geometry>
+#include <Eigen/Eigen>
+#include <Eigen/Geometry>
 #include <memory>
 #include <optional>
 #include <pinocchio/algorithm/frames.hpp>

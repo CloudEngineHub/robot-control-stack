@@ -183,6 +183,29 @@ class PyHand : public rcs::common::Hand {
   }
 };
 
+// trampoline kinematics
+class PyKinematics : public rcs::common::Kinematics {
+  // TODO: use line below when upgraded to pybind11 3.x
+  //  public py::trampoline_self_life_support {
+ public:
+  using rcs::common::Kinematics::Kinematics;  // Inherit constructors
+
+  std::optional<rcs::common::VectorXd> inverse(
+      const rcs::common::Pose& pose, const rcs::common::VectorXd& q0,
+      const rcs::common::Pose& tcp_offset =
+          rcs::common::Pose::Identity()) override {
+    PYBIND11_OVERRIDE_PURE(std::optional<rcs::common::VectorXd>,
+                           rcs::common::Kinematics, inverse, pose, q0,
+                           tcp_offset);
+  }
+
+  rcs::common::Pose forward(const rcs::common::VectorXd& q0,
+                            const rcs::common::Pose& tcp_offset) override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Kinematics, forward,
+                           q0, tcp_offset);
+  }
+};
+
 PYBIND11_MODULE(_core, m) {
   m.doc() = R"pbdoc(
         Robot Control Stack Python Bindings
@@ -244,6 +267,15 @@ PYBIND11_MODULE(_core, m) {
                                     t[2].cast<double>());
           }));
 
+  py::class_<rcs::common::RotVec>(common, "RotVec")
+      .def(py::init<Eigen::Vector3d>(), py::arg("vec"))
+      .def("rotation_matrix", &rcs::common::RotVec::rotation_matrix)
+      .def("as_vector", &rcs::common::RotVec::as_vector)
+      .def("as_quaternion_vector", &rcs::common::RotVec::as_quaternion_vector)
+      .def("is_close", &rcs::common::RotVec::is_close, py::arg("other"),
+           py::arg("eps") = 1e-8)
+      .def("__str__", &rcs::common::RotVec::str);
+
   py::class_<rcs::common::Pose>(common, "Pose")
       .def(py::init<>())
       .def(py::init<const Eigen::Matrix4d&>(), py::arg("pose_matrix"))
@@ -266,6 +298,7 @@ PYBIND11_MODULE(_core, m) {
       .def("pose_matrix", &rcs::common::Pose::pose_matrix)
       .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
       .def("xyzrpy", &rcs::common::Pose::xyzrpy)
+      .def("rotvec", &rcs::common::Pose::rotvec)
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
       .def("inverse", &rcs::common::Pose::inverse)
@@ -286,8 +319,12 @@ PYBIND11_MODULE(_core, m) {
             return rcs::common::Pose(t);
           }));
 
-  py::class_<rcs::common::Kinematics, std::shared_ptr<rcs::common::Kinematics>>(
+  py::class_<rcs::common::Kinematics, PyKinematics,
+             std::shared_ptr<rcs::common::Kinematics>>(
+      // TODO: use line below when upgraded to pybind11 3.x
+      // py::class_<rcs::common::Kinematics, PyKinematics, py::smart_holder>(
       common, "Kinematics")
+      .def(py::init<>())
       .def("inverse", &rcs::common::Kinematics::inverse, py::arg("pose"),
            py::arg("q0"), py::arg("tcp_offset") = rcs::common::Pose::Identity())
       .def("forward", &rcs::common::Kinematics::forward, py::arg("q0"),

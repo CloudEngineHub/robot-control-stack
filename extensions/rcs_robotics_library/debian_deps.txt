@@ -5,3 +5,4 @@ libboost-all-dev
 liblzma-dev
 libxml2-dev
 libxslt1-dev
+libeigen3-dev

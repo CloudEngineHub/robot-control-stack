@@ -4,25 +4,24 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_tacto"
-version = "0.5.0"
-description="RCS integration of tacto"
+version = "0.6.2"
+description = "RCS integration of tacto"
 dependencies = [
-    "rcs>=0.5.0",
-    "mujoco-tacto@git+https://github.com/utn-air/mujoco-tacto.git@main"
+  "rcs>=0.6.2",
+  "omegaconf",
+  "mujoco-tacto@git+https://github.com/utn-air/mujoco-tacto.git@main",
 ]
 readme = "README.md"
 maintainers = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
   { name = "Seongjin Bien", email = "seongjin.bien@utn.de" },
 ]
-authors = [
-  { name = "Seongjin Bien", email = "seongjin.bien@utn.de" },
-]
+authors = [{ name = "Seongjin Bien", email = "seongjin.bien@utn.de" }]
 requires-python = ">=3.10"
 
 [tool.black]
 line-length = 120
-target-version = ["py311"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"

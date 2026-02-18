@@ -14,16 +14,33 @@ class PandaHW(gym.Wrapper):
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, hw.Franka), "Robot must be a hw.Franka instance."
         self.hw_robot = cast(hw.Franka, self.unwrapped.robot)
+        self._robot_state_keys: list[str] | None = None
 
     def step(self, action: Any) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict]:
         try:
-            return super().step(action)
+            obs, reward, terminated, truncated, info = super().step(action)
+            obs = self.get_obs(obs)
+            return obs, reward, terminated, truncated, info
         except hw.exceptions.FrankaControlException as e:
             _logger.error("FrankaControlException: %s", e)
             self.hw_robot.automatic_error_recovery()
             # TODO: this does not work if some wrappers are in between
             # PandaHW and RobotEnv
-            return dict(self.unwrapped.get_obs()), 0, False, True, {}
+            return self.get_obs(), 0, False, True, {}
+
+    def get_obs(self, obs: dict | None = None) -> dict[str, Any]:
+        if obs is None:
+            obs = dict(self.unwrapped.get_obs())
+        robot_state = cast(hw.FrankaState, self.unwrapped.robot.get_state())
+        obs["robot_state"] = self._rs2dict(robot_state.robot_state)
+        return obs
+
+    def _rs2dict(self, state: hw.RobotState):
+        if self._robot_state_keys is None:
+            self._robot_state_keys = [
+                attr for attr in dir(state) if not attr.startswith("__") and not callable(getattr(state, attr))
+            ]
+        return {key: getattr(state, key) for key in self._robot_state_keys}
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None

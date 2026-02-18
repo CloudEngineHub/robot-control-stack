@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.19)
 project(
     rcs_fr3
     LANGUAGES C CXX
-    VERSION 0.5.2
+    VERSION 0.6.2
     DESCRIPTION "RCS robotics library integration"
 )
 
@@ -42,7 +42,7 @@ set(BUILD_DOCUMENTATION OFF)
 include(FetchContent)
 
 find_package(Eigen3 REQUIRED)
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 

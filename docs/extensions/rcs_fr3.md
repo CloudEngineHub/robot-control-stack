@@ -6,7 +6,7 @@ This extension provides support for the Franka Research 3 (FR3) robot in RCS.
 
 ```shell
 # from root directory
-pip install -ve extensions/rcs_fr3 --no-build-isolation
+pip install -ve extensions/rcs_fr3
 ```
 
 ### Configuration
