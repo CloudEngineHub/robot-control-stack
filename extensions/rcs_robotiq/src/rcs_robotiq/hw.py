@@ -2,8 +2,9 @@ from rcs._core.common import Gripper
 from Robotiq2F85Driver.Robotiq2F85Driver import Robotiq2F85Driver
 
 
-class RobotiQGripper:
+class RobotiQGripper(Gripper):
     def __init__(self, serial_number):
+        super().__init__()
         self.gripper = Robotiq2F85Driver(serial_number=serial_number)
 
     def get_normalized_width(self) -> float:
