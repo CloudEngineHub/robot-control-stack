@@ -12,4 +12,5 @@ rcs_realsense
 rcs_usb_cam
 rcs_tacto
 rcs_robotics_library
+rcs_robotiq
 ```

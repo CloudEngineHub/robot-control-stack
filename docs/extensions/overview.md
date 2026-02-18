@@ -30,6 +30,7 @@ RCS comes with several supported extensions:
 - **rcs_usb_cam**: Support for generic USB webcams.
 - **rcs_tacto**: Integration with the Tacto tactile sensor simulator.
 - **rcs_robotics_library**: Integration with the Robotics Library (RL).
+- **rcs_robotiq**: Integration with the Robotiq 2F-85 Gripper.
 
 ## Creating Extensions
 

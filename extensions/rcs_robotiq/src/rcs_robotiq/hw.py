@@ -1,16 +1,14 @@
-
-
 from rcs._core.common import Gripper
-from Robotiq2F85Driver import Robotiq2F85Driver
+from Robotiq2F85Driver.Robotiq2F85Driver import Robotiq2F85Driver
 
 
-class RobotiQGripper(Gripper):
+class RobotiQGripper:
     def __init__(self, serial_number):
         self.gripper = Robotiq2F85Driver(serial_number=serial_number)
 
     def get_normalized_width(self) -> float:
         # value between 0 and 1 (0 is closed)
-        return (85 - self.gripper.opening()) / 85
+        return self.gripper.opening / 85
 
     def grasp(self) -> None:
         """
@@ -34,10 +32,8 @@ class RobotiQGripper(Gripper):
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
-        abs_width = (1 - width) * 85
-        # print(f"Setting gripper width to {width:.2f} (absolute: {abs_width:.2f})")
-        self.gripper.move(int(abs_width), int(self.gripper._max_speed), int(self.gripper._max_force))
-        self.gripper.go_to(opening=int(abs_width), speed=150, force=30)
+        abs_width = width * 85
+        self.gripper.go_to(opening=float(abs_width), speed=150.0, force=30.0)
 
     def shut(self) -> None:
         """
