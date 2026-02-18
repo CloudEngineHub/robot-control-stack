@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.19)
 project(
     rcs_fr3
     LANGUAGES C CXX
-    VERSION 0.5.2
+    VERSION 0.6.2
     DESCRIPTION "RCS robotics library integration"
 )
 
@@ -25,6 +25,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -41,7 +42,7 @@ set(BUILD_DOCUMENTATION OFF)
 include(FetchContent)
 
 find_package(Eigen3 REQUIRED)
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 

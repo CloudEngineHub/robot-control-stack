@@ -45,9 +45,9 @@ class OmplTrajectoryDemo:
         self.planner = planner
 
     def _action(self, pose: Pose, gripper: float) -> dict[str, Any]:
-        return {"xyzrpy": pose.xyzrpy(), "gripper": gripper}
+        return {"xyzrpy": pose.xyzrpy(), "gripper": [gripper]}
 
-    def _jaction(self, joints: np.ndarray, gripper: float) -> dict[str, Any]:
+    def _jaction(self, joints: np.ndarray, gripper: list[float]) -> dict[str, Any]:
         return {"joints": joints, "gripper": gripper}
 
     def get_object_pose(self, geom_name) -> Pose:
@@ -102,7 +102,7 @@ class OmplTrajectoryDemo:
     def step(self, action: dict) -> dict:
         return self.env.step(action)[0]
 
-    def execute_motion(self, waypoints: list[Pose], gripper: float = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
+    def execute_motion(self, waypoints: list[Pose], gripper: list[float] = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
         for i in range(len(waypoints)):
             obs = self.step(self._jaction(waypoints[i], gripper))  # type: ignore
         return obs

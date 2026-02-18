@@ -19,7 +19,7 @@ class PickUpDemo:
         self.unwrapped: RobotEnv = cast(RobotEnv, self.env.unwrapped)
         self.home_pose = self.unwrapped.robot.get_cartesian_position()
 
-    def _action(self, pose: Pose, gripper: float) -> dict[str, Any]:
+    def _action(self, pose: Pose, gripper: list[float]) -> dict[str, Any]:
         return {"xyzrpy": pose.xyzrpy(), "gripper": gripper}
 
     def get_object_pose(self, geom_name) -> Pose:
@@ -48,7 +48,7 @@ class PickUpDemo:
         goal_pose *= Pose(translation=np.array([0, 0, delta_up]), quaternion=np.array([1, 0, 0, 0]))  # type: ignore
         return self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
 
-    def execute_motion(self, waypoints: list[Pose], gripper: float = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
+    def execute_motion(self, waypoints: list[Pose], gripper: list[float] = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
         for i in range(len(waypoints)):
             obs = self.step(self._action(waypoints[i], gripper))
         return obs

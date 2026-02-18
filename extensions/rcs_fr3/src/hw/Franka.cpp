@@ -19,9 +19,9 @@
 
 namespace rcs {
 namespace hw {
-Franka::Franka(const std::string &ip,
+Franka::Franka(const std::string& ip,
                std::optional<std::shared_ptr<common::Kinematics>> ik,
-               const std::optional<FrankaConfig> &cfg)
+               const std::optional<FrankaConfig>& cfg)
     : robot(ip), m_ik(ik) {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
@@ -35,7 +35,7 @@ Franka::Franka(const std::string &ip,
 Franka::~Franka() {
   try {
     this->stop_control_thread();
-  } catch (const franka::Exception &e) {
+  } catch (const franka::Exception& e) {
     std::cerr << "Exception in ~Franka(): " << e.what() << std::endl;
   }
 }
@@ -45,7 +45,7 @@ Franka::~Franka() {
  * @param cfg The configuration for the robot, it should be a FrankaConfig type
  * otherwise the call will fail
  */
-bool Franka::set_config(const FrankaConfig &cfg) {
+bool Franka::set_config(const FrankaConfig& cfg) {
   this->cfg = cfg;
   this->cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
 
@@ -66,16 +66,23 @@ bool Franka::set_config(const FrankaConfig &cfg) {
   return true;
 }
 
-FrankaConfig *Franka::get_config() {
+FrankaConfig* Franka::get_config() {
   // copy config to heap
-  FrankaConfig *cfg = new FrankaConfig();
+  FrankaConfig* cfg = new FrankaConfig();
   *cfg = this->cfg;
   return cfg;
 }
 
-FrankaState *Franka::get_state() {
-  // dummy state until we define a prober state
-  FrankaState *state = new FrankaState();
+FrankaState* Franka::get_state() {
+  franka::RobotState current_robot_state;
+  if (this->running_controller == Controller::none) {
+    current_robot_state = this->robot.readOnce();
+  } else {
+    std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+    current_robot_state = this->curr_state;
+  }
+  auto* state = new FrankaState();
+  state->robot_state = current_robot_state;
   return state;
 }
 
@@ -105,7 +112,7 @@ common::Pose Franka::get_cartesian_position() {
   return x;
 }
 
-void Franka::set_joint_position(const common::VectorXd &q) {
+void Franka::set_joint_position(const common::VectorXd& q) {
   if (this->cfg.async_control) {
     this->controller_set_joint_position(q);
     return;
@@ -134,7 +141,7 @@ void Franka::set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch,
   this->robot.setGuidingMode(activated, elbow);
 }
 
-void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
+void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
               double epsilon = 0.00025) {
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(
       M, Eigen::ComputeFullU | Eigen::ComputeFullV);
@@ -153,7 +160,7 @@ void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
   M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
 }
 
-void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
+void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array, double min_torque,
                          double max_torque) {
   for (size_t i = 0; i < tau_d_array.size(); i++) {
     if (tau_d_array[i] < min_torque) {
@@ -164,7 +171,8 @@ void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
   }
 }
 
-void Franka::controller_set_joint_position(const common::Vector7d &desired_q) {
+void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
+  this->check_for_background_errors();
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;  // in s
   // form deoxys/config/charmander.yml
@@ -174,6 +182,7 @@ void Franka::controller_set_joint_position(const common::Vector7d &desired_q) {
   if (this->running_controller == Controller::none) {
     this->controller_time = 0.0;
     this->get_joint_position();
+    this->joint_interpolator = common::LinearJointPositionTrajInterpolator();
   } else if (this->running_controller != Controller::jsc) {
     // runtime error
     throw std::runtime_error(
@@ -198,8 +207,18 @@ void Franka::controller_set_joint_position(const common::Vector7d &desired_q) {
   }
 }
 
+void Franka::check_for_background_errors() {
+  std::lock_guard<std::mutex> lock(this->exception_mutex);
+  if (this->background_exception) {
+    std::exception_ptr ex = this->background_exception;
+    this->background_exception = nullptr;
+    std::rethrow_exception(ex);
+  }
+}
+
 void Franka::osc_set_cartesian_position(
-    const common::Pose &desired_pose_EE_in_base_frame) {
+    const common::Pose& desired_pose_EE_in_base_frame) {
+  this->check_for_background_errors();
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;
   // form deoxys/config/charmander.yml
@@ -208,7 +227,7 @@ void Franka::osc_set_cartesian_position(
 
   if (this->running_controller == Controller::none) {
     this->controller_time = 0.0;
-    this->get_cartesian_position();
+    this->traj_interpolator = common::LinearPoseTrajInterpolator();
   } else if (this->running_controller != Controller::osc) {
     throw std::runtime_error(
         "Controller type must but osc but is " +
@@ -293,168 +312,178 @@ void Franka::osc() {
   joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
   avoidance_weights_ << 1., 1., 1., 1., 1., 10., 10.;
 
-  this->robot.control([&](const franka::RobotState &robot_state,
-                          franka::Duration period) -> franka::Torques {
-    std::chrono::high_resolution_clock::time_point t1 =
-        std::chrono::high_resolution_clock::now();
+  try {
+    this->robot.control([&](const franka::RobotState& robot_state,
+                            franka::Duration period) -> franka::Torques {
+      std::chrono::high_resolution_clock::time_point t1 =
+          std::chrono::high_resolution_clock::now();
 
-    // torques handler
-    if (this->running_controller == Controller::none) {
-      franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
-      return franka::MotionFinished(zero_torques);
-    }
-    // TO BE replaced
-    // if (!this->control_thread_running && dq.maxCoeff() < 0.0001) {
-    //   return franka::MotionFinished(franka::Torques(tau_d_array));
-    // }
+      // torques handler
+      if (this->running_controller == Controller::none) {
+        franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+        return franka::MotionFinished(zero_torques);
+      }
+      // TO BE replaced
+      // if (!this->control_thread_running && dq.maxCoeff() < 0.0001) {
+      //   return franka::MotionFinished(franka::Torques(tau_d_array));
+      // }
 
-    Eigen::Vector3d desired_pos_EE_in_base_frame;
-    Eigen::Quaterniond desired_quat_EE_in_base_frame;
+      Eigen::Vector3d desired_pos_EE_in_base_frame;
+      Eigen::Quaterniond desired_quat_EE_in_base_frame;
 
-    common::Pose pose(robot_state.O_T_EE);
-    // form deoxys/config/charmander.yml
-    int policy_rate = 20;
-    int traj_rate = 500;
+      common::Pose pose(robot_state.O_T_EE);
+      // form deoxys/config/charmander.yml
+      int policy_rate = 20;
+      int traj_rate = 500;
 
-    this->interpolator_mutex.lock();
-    this->curr_state = robot_state;
-    this->controller_time += period.toSec();
-    this->traj_interpolator.next_step(this->controller_time,
-                                      desired_pos_EE_in_base_frame,
-                                      desired_quat_EE_in_base_frame);
-    this->interpolator_mutex.unlock();
+      this->interpolator_mutex.lock();
+      this->curr_state = robot_state;
+      this->controller_time += period.toSec();
+      this->traj_interpolator.next_step(this->controller_time,
+                                        desired_pos_EE_in_base_frame,
+                                        desired_quat_EE_in_base_frame);
+      this->interpolator_mutex.unlock();
 
-    // end torques handler
+      // end torques handler
 
-    Eigen::Matrix<double, 7, 1> tau_d;
+      Eigen::Matrix<double, 7, 1> tau_d;
 
-    std::array<double, 49> mass_array = model.mass(robot_state);
-    Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
+      std::array<double, 49> mass_array = model.mass(robot_state);
+      Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
 
-    M = M + Eigen::Matrix<double, 7, 7>(residual_mass_vec_.asDiagonal());
+      M = M + Eigen::Matrix<double, 7, 7>(residual_mass_vec_.asDiagonal());
 
-    // coriolis and gravity
-    std::array<double, 7> coriolis_array = model.coriolis(robot_state);
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
-        coriolis_array.data());
+      // coriolis and gravity
+      std::array<double, 7> coriolis_array = model.coriolis(robot_state);
+      Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
+          coriolis_array.data());
 
-    std::array<double, 7> gravity_array = model.gravity(robot_state);
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> gravity(gravity_array.data());
+      std::array<double, 7> gravity_array = model.gravity(robot_state);
+      Eigen::Map<const Eigen::Matrix<double, 7, 1>> gravity(
+          gravity_array.data());
 
-    std::array<double, 42> jacobian_array =
-        model.zeroJacobian(franka::Frame::kEndEffector, robot_state);
-    Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(
-        jacobian_array.data());
+      std::array<double, 42> jacobian_array =
+          model.zeroJacobian(franka::Frame::kEndEffector, robot_state);
+      Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(
+          jacobian_array.data());
 
-    Eigen::MatrixXd jacobian_pos(3, 7);
-    Eigen::MatrixXd jacobian_ori(3, 7);
-    jacobian_pos << jacobian.block(0, 0, 3, 7);
-    jacobian_ori << jacobian.block(3, 0, 3, 7);
+      Eigen::MatrixXd jacobian_pos(3, 7);
+      Eigen::MatrixXd jacobian_ori(3, 7);
+      jacobian_pos << jacobian.block(0, 0, 3, 7);
+      jacobian_ori << jacobian.block(3, 0, 3, 7);
 
-    // End effector pose in base frame
-    Eigen::Affine3d T_EE_in_base_frame(
-        Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
-    Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
-    Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
+      // End effector pose in base frame
+      Eigen::Affine3d T_EE_in_base_frame(
+          Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
+      Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
+      Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
 
-    // Nullspace goal
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
+      // Nullspace goal
+      Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
 
-    // Joint velocity
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
+      // Joint velocity
+      Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
 
-    if (desired_quat_EE_in_base_frame.coeffs().dot(
-            quat_EE_in_base_frame.coeffs()) < 0.0) {
-      quat_EE_in_base_frame.coeffs() << -quat_EE_in_base_frame.coeffs();
-    }
+      if (desired_quat_EE_in_base_frame.coeffs().dot(
+              quat_EE_in_base_frame.coeffs()) < 0.0) {
+        quat_EE_in_base_frame.coeffs() << -quat_EE_in_base_frame.coeffs();
+      }
 
-    Eigen::Vector3d pos_error;
+      Eigen::Vector3d pos_error;
 
-    pos_error << desired_pos_EE_in_base_frame - pos_EE_in_base_frame;
-    Eigen::Quaterniond quat_error(desired_quat_EE_in_base_frame.inverse() *
-                                  quat_EE_in_base_frame);
-    Eigen::Vector3d ori_error;
-    ori_error << quat_error.x(), quat_error.y(), quat_error.z();
-    ori_error << -T_EE_in_base_frame.linear() * ori_error;
+      pos_error << desired_pos_EE_in_base_frame - pos_EE_in_base_frame;
+      Eigen::Quaterniond quat_error(desired_quat_EE_in_base_frame.inverse() *
+                                    quat_EE_in_base_frame);
+      Eigen::Vector3d ori_error;
+      ori_error << quat_error.x(), quat_error.y(), quat_error.z();
+      ori_error << -T_EE_in_base_frame.linear() * ori_error;
 
-    // Compute matrices
-    Eigen::Matrix<double, 7, 7> M_inv(M.inverse());
-    Eigen::MatrixXd Lambda_inv(6, 6);
-    Lambda_inv << jacobian * M_inv * jacobian.transpose();
-    Eigen::MatrixXd Lambda(6, 6);
-    PInverse(Lambda_inv, Lambda);
+      // Compute matrices
+      Eigen::Matrix<double, 7, 7> M_inv(M.inverse());
+      Eigen::MatrixXd Lambda_inv(6, 6);
+      Lambda_inv << jacobian * M_inv * jacobian.transpose();
+      Eigen::MatrixXd Lambda(6, 6);
+      PInverse(Lambda_inv, Lambda);
 
-    Eigen::Matrix<double, 7, 6> J_inv;
-    J_inv << M_inv * jacobian.transpose() * Lambda;
-    Eigen::Matrix<double, 7, 7> Nullspace;
-    Nullspace << Eigen::MatrixXd::Identity(7, 7) -
-                     jacobian.transpose() * J_inv.transpose();
+      Eigen::Matrix<double, 7, 6> J_inv;
+      J_inv << M_inv * jacobian.transpose() * Lambda;
+      Eigen::Matrix<double, 7, 7> Nullspace;
+      Nullspace << Eigen::MatrixXd::Identity(7, 7) -
+                       jacobian.transpose() * J_inv.transpose();
 
-    // Decoupled mass matrices
-    Eigen::MatrixXd Lambda_pos_inv(3, 3);
-    Lambda_pos_inv << jacobian_pos * M_inv * jacobian_pos.transpose();
-    Eigen::MatrixXd Lambda_ori_inv(3, 3);
-    Lambda_ori_inv << jacobian_ori * M_inv * jacobian_ori.transpose();
+      // Decoupled mass matrices
+      Eigen::MatrixXd Lambda_pos_inv(3, 3);
+      Lambda_pos_inv << jacobian_pos * M_inv * jacobian_pos.transpose();
+      Eigen::MatrixXd Lambda_ori_inv(3, 3);
+      Lambda_ori_inv << jacobian_ori * M_inv * jacobian_ori.transpose();
 
-    Eigen::MatrixXd Lambda_pos(3, 3);
-    Eigen::MatrixXd Lambda_ori(3, 3);
-    PInverse(Lambda_pos_inv, Lambda_pos);
-    PInverse(Lambda_ori_inv, Lambda_ori);
+      Eigen::MatrixXd Lambda_pos(3, 3);
+      Eigen::MatrixXd Lambda_ori(3, 3);
+      PInverse(Lambda_pos_inv, Lambda_pos);
+      PInverse(Lambda_ori_inv, Lambda_ori);
 
-    pos_error =
-        pos_error.unaryExpr([](double x) { return (abs(x) < 1e-4) ? 0. : x; });
-    ori_error =
-        ori_error.unaryExpr([](double x) { return (abs(x) < 5e-3) ? 0. : x; });
+      pos_error = pos_error.unaryExpr(
+          [](double x) { return (abs(x) < 1e-4) ? 0. : x; });
+      ori_error = ori_error.unaryExpr(
+          [](double x) { return (abs(x) < 5e-3) ? 0. : x; });
 
-    tau_d << jacobian_pos.transpose() *
-                     (Lambda_pos *
-                      (Kp_p * pos_error - Kd_p * (jacobian_pos * dq))) +
-                 jacobian_ori.transpose() *
-                     (Lambda_ori *
-                      (Kp_r * ori_error - Kd_r * (jacobian_ori * dq)));
+      tau_d << jacobian_pos.transpose() *
+                       (Lambda_pos *
+                        (Kp_p * pos_error - Kd_p * (jacobian_pos * dq))) +
+                   jacobian_ori.transpose() *
+                       (Lambda_ori *
+                        (Kp_r * ori_error - Kd_r * (jacobian_ori * dq)));
 
-    // nullspace control
-    tau_d << tau_d + Nullspace * (static_q_task_ - q);
+      // nullspace control
+      tau_d << tau_d + Nullspace * (static_q_task_ - q);
 
-    // Add joint avoidance potential
-    Eigen::Matrix<double, 7, 1> avoidance_force;
-    avoidance_force.setZero();
-    Eigen::Matrix<double, 7, 1> dist2joint_max;
-    Eigen::Matrix<double, 7, 1> dist2joint_min;
+      // Add joint avoidance potential
+      Eigen::Matrix<double, 7, 1> avoidance_force;
+      avoidance_force.setZero();
+      Eigen::Matrix<double, 7, 1> dist2joint_max;
+      Eigen::Matrix<double, 7, 1> dist2joint_min;
 
-    dist2joint_max = joint_max_.matrix() - q;
-    dist2joint_min = q - joint_min_.matrix();
+      dist2joint_max = joint_max_.matrix() - q;
+      dist2joint_min = q - joint_min_.matrix();
 
-    for (int i = 0; i < 7; i++) {
-      if (dist2joint_max[i] < 0.25 && dist2joint_max[i] > 0.1)
-        avoidance_force[i] += -avoidance_weights_[i] * dist2joint_max[i];
-      if (dist2joint_min[i] < 0.25 && dist2joint_min[i] > 0.1)
-        avoidance_force[i] += avoidance_weights_[i] * dist2joint_min[i];
-    }
-    tau_d << tau_d + Nullspace * avoidance_force;
-    for (int i = 0; i < 7; i++) {
-      if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-      if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
-    }
+      for (int i = 0; i < 7; i++) {
+        if (dist2joint_max[i] < 0.25 && dist2joint_max[i] > 0.1)
+          avoidance_force[i] += -avoidance_weights_[i] * dist2joint_max[i];
+        if (dist2joint_min[i] < 0.25 && dist2joint_min[i] > 0.1)
+          avoidance_force[i] += avoidance_weights_[i] * dist2joint_min[i];
+      }
+      tau_d << tau_d + Nullspace * avoidance_force;
+      for (int i = 0; i < 7; i++) {
+        if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
+        if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
+      }
 
-    std::array<double, 7> tau_d_array{};
-    Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
+      std::array<double, 7> tau_d_array{};
+      Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
 
-    // end of controller
-    std::chrono::high_resolution_clock::time_point t2 =
-        std::chrono::high_resolution_clock::now();
-    auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+      // end of controller
+      std::chrono::high_resolution_clock::time_point t2 =
+          std::chrono::high_resolution_clock::now();
+      auto time =
+          std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
-    std::array<double, 7> tau_d_rate_limited = franka::limitRate(
-        franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
+      std::array<double, 7> tau_d_rate_limited = franka::limitRate(
+          franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
-    // deoxys/config/control_config.yml
-    double min_torque = -5;
-    double max_torque = 5;
-    TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+      // deoxys/config/control_config.yml
+      double min_torque = -5;
+      double max_torque = 5;
+      TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
 
-    return tau_d_rate_limited;
-  });
+      return tau_d_rate_limited;
+    });
+  } catch (...) {
+    std::lock_guard<std::mutex> lock(this->exception_mutex);
+    this->background_exception = std::current_exception();
+  }
+
+  // Ensure we mark the controller as stopped so we can restart later
+  this->running_controller = Controller::none;
 }
 
 void Franka::joint_controller() {
@@ -484,71 +513,77 @@ void Franka::joint_controller() {
   joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
   joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
 
-  this->robot.control([&](const franka::RobotState &robot_state,
-                          franka::Duration period) -> franka::Torques {
-    std::chrono::high_resolution_clock::time_point t1 =
-        std::chrono::high_resolution_clock::now();
+  try {
+    this->robot.control([&](const franka::RobotState& robot_state,
+                            franka::Duration period) -> franka::Torques {
+      std::chrono::high_resolution_clock::time_point t1 =
+          std::chrono::high_resolution_clock::now();
 
-    // torques handler
-    if (this->running_controller == Controller::none) {
-      // TODO: test if this also works when the robot is moving
-      franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
-      return franka::MotionFinished(zero_torques);
-    }
+      // torques handler
+      if (this->running_controller == Controller::none) {
+        // TODO: test if this also works when the robot is moving
+        franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+        return franka::MotionFinished(zero_torques);
+      }
 
-    common::Vector7d desired_q;
-    common::Pose pose(robot_state.O_T_EE);
+      common::Vector7d desired_q;
+      common::Pose pose(robot_state.O_T_EE);
 
-    this->interpolator_mutex.lock();
-    this->curr_state = robot_state;
-    this->controller_time += period.toSec();
-    this->joint_interpolator.next_step(this->controller_time, desired_q);
-    this->interpolator_mutex.unlock();
-    // end torques handler
+      this->interpolator_mutex.lock();
+      this->curr_state = robot_state;
+      this->controller_time += period.toSec();
+      this->joint_interpolator.next_step(this->controller_time, desired_q);
+      this->interpolator_mutex.unlock();
+      // end torques handler
 
-    Eigen::Matrix<double, 7, 1> tau_d;
+      Eigen::Matrix<double, 7, 1> tau_d;
 
-    // Current joint velocity
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
+      // Current joint velocity
+      Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
 
-    // Current joint position
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
+      // Current joint position
+      Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
 
-    Eigen::MatrixXd joint_pos_error(7, 1);
+      Eigen::MatrixXd joint_pos_error(7, 1);
 
-    joint_pos_error << desired_q - q;
+      joint_pos_error << desired_q - q;
 
-    tau_d << Kp.cwiseProduct(joint_pos_error) - Kd.cwiseProduct(dq);
+      tau_d << Kp.cwiseProduct(joint_pos_error) - Kd.cwiseProduct(dq);
 
-    Eigen::Matrix<double, 7, 1> dist2joint_max;
-    Eigen::Matrix<double, 7, 1> dist2joint_min;
+      Eigen::Matrix<double, 7, 1> dist2joint_max;
+      Eigen::Matrix<double, 7, 1> dist2joint_min;
 
-    dist2joint_max = joint_max_.matrix() - q;
-    dist2joint_min = q - joint_min_.matrix();
+      dist2joint_max = joint_max_.matrix() - q;
+      dist2joint_min = q - joint_min_.matrix();
 
-    for (int i = 0; i < 7; i++) {
-      if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-      if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
-    }
+      for (int i = 0; i < 7; i++) {
+        if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
+        if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
+      }
 
-    std::array<double, 7> tau_d_array{};
-    Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
+      std::array<double, 7> tau_d_array{};
+      Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
 
-    // end of controller
-    std::chrono::high_resolution_clock::time_point t2 =
-        std::chrono::high_resolution_clock::now();
-    auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+      // end of controller
+      std::chrono::high_resolution_clock::time_point t2 =
+          std::chrono::high_resolution_clock::now();
+      auto time =
+          std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
-    std::array<double, 7> tau_d_rate_limited = franka::limitRate(
-        franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
+      std::array<double, 7> tau_d_rate_limited = franka::limitRate(
+          franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
-    // deoxys/config/control_config.yml
-    double min_torque = -5;
-    double max_torque = 5;
-    TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+      // deoxys/config/control_config.yml
+      double min_torque = -5;
+      double max_torque = 5;
+      TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
 
-    return tau_d_rate_limited;
-  });
+      return tau_d_rate_limited;
+    });
+  } catch (...) {
+    std::lock_guard<std::mutex> lock(this->exception_mutex);
+    this->background_exception = std::current_exception();
+  }
 }
 
 void Franka::zero_torque_guiding() {
@@ -570,7 +605,7 @@ void Franka::zero_torque_controller() {
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
   this->controller_time = 0.0;
-  this->robot.control([&](const franka::RobotState &robot_state,
+  this->robot.control([&](const franka::RobotState& robot_state,
                           franka::Duration period) -> franka::Torques {
     this->interpolator_mutex.lock();
     this->curr_state = robot_state;
@@ -586,6 +621,7 @@ void Franka::zero_torque_controller() {
 
 void Franka::move_home() {
   // sync
+  this->stop_control_thread();
   FrankaMotionGenerator motion_generator(
       this->cfg.speed_factor,
       common::robots_meta_config.at(this->cfg.robot_type).q_home);
@@ -613,7 +649,7 @@ void Franka::double_tap_robot_to_continue() {
   auto last_time_something_happened = std::chrono::system_clock::now();
   auto last_time_something_touched = std::chrono::system_clock::now();
   start_force << s.O_F_ext_hat_K[0], s.O_F_ext_hat_K[1], s.O_F_ext_hat_K[2];
-  this->robot.read([&](const franka::RobotState &robot_state) {
+  this->robot.read([&](const franka::RobotState& robot_state) {
     Eigen::Vector3d force;
     force << robot_state.O_F_ext_hat_K[0], robot_state.O_F_ext_hat_K[1],
         robot_state.O_F_ext_hat_K[2];
@@ -663,7 +699,7 @@ std::optional<std::shared_ptr<common::Kinematics>> Franka::get_ik() {
   return this->m_ik;
 }
 
-void Franka::set_cartesian_position(const common::Pose &x) {
+void Franka::set_cartesian_position(const common::Pose& x) {
   // pose is assumed to be in the robots coordinate frame
   if (this->cfg.async_control) {
     this->osc_set_cartesian_position(x);
@@ -691,7 +727,7 @@ void Franka::set_cartesian_position(const common::Pose &x) {
   }
 }
 
-void Franka::set_cartesian_position_ik(const common::Pose &pose) {
+void Franka::set_cartesian_position_ik(const common::Pose& pose) {
   if (!this->m_ik.has_value()) {
     throw std::runtime_error(
         "No inverse kinematics was provided. Cannot use IK to set cartesian "
@@ -714,14 +750,14 @@ common::Pose Franka::get_base_pose_in_world_coordinates() {
                                               : common::Pose();
 }
 
-void Franka::set_cartesian_position_internal(const common::Pose &pose,
+void Franka::set_cartesian_position_internal(const common::Pose& pose,
                                              double max_time,
                                              std::optional<double> elbow,
                                              std::optional<double> max_force) {
   // TODO: use speed factor instead of max_time
   common::Pose initial_pose = this->get_cartesian_position();
 
-  auto force_stop_condition = [&max_force](const franka::RobotState &state,
+  auto force_stop_condition = [&max_force](const franka::RobotState& state,
                                            const double progress) {
     Eigen::Vector3d force;
     force << state.O_F_ext_hat_K[0], state.O_F_ext_hat_K[1],
@@ -737,7 +773,7 @@ void Franka::set_cartesian_position_internal(const common::Pose &pose,
   this->robot.control(
       [&force_stop_condition, &initial_elbow, &elbow, &max_force, &time,
        &max_time, &initial_pose, &should_stop,
-       &pose](const franka::RobotState &state,
+       &pose](const franka::RobotState& state,
               franka::Duration time_step) -> franka::CartesianPose {
         time += time_step.toSec();
         if (time == 0) {

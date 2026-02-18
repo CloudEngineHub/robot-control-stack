@@ -33,13 +33,13 @@ class PyRobot : public rcs::common::Robot {
  public:
   using rcs::common::Robot::Robot;  // Inherit constructors
 
-  rcs::common::RobotConfig *get_config() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::RobotConfig *, rcs::common::Robot,
+  rcs::common::RobotConfig* get_config() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::RobotConfig*, rcs::common::Robot,
                            get_config, );
   }
 
-  rcs::common::RobotState *get_state() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::RobotState *, rcs::common::Robot,
+  rcs::common::RobotState* get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::RobotState*, rcs::common::Robot,
                            get_state, );
   }
 
@@ -48,7 +48,7 @@ class PyRobot : public rcs::common::Robot {
                            get_cartesian_position, );
   }
 
-  void set_joint_position(const rcs::common::VectorXd &q) override {
+  void set_joint_position(const rcs::common::VectorXd& q) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_joint_position, q);
   }
 
@@ -78,7 +78,7 @@ class PyRobot : public rcs::common::Robot {
                            get_base_pose_in_world_coordinates, );
   }
 
-  void set_cartesian_position(const rcs::common::Pose &pose) override {
+  void set_cartesian_position(const rcs::common::Pose& pose) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_cartesian_position,
                            pose);
   }
@@ -91,13 +91,13 @@ class PyGripper : public rcs::common::Gripper {
  public:
   using rcs::common::Gripper::Gripper;  // Inherit constructors
 
-  rcs::common::GripperConfig *get_config() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::GripperConfig *, rcs::common::Gripper,
+  rcs::common::GripperConfig* get_config() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::GripperConfig*, rcs::common::Gripper,
                            get_config, );
   }
 
-  rcs::common::GripperState *get_state() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::GripperState *, rcs::common::Gripper,
+  rcs::common::GripperState* get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::GripperState*, rcs::common::Gripper,
                            get_state, );
   }
 
@@ -140,17 +140,17 @@ class PyHand : public rcs::common::Hand {
  public:
   using rcs::common::Hand::Hand;  // Inherit constructors
 
-  rcs::common::HandConfig *get_config() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::HandConfig *, rcs::common::Hand,
+  rcs::common::HandConfig* get_config() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::HandConfig*, rcs::common::Hand,
                            get_config, );
   }
 
-  rcs::common::HandState *get_state() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::HandState *, rcs::common::Hand,
+  rcs::common::HandState* get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::HandState*, rcs::common::Hand,
                            get_state, );
   }
 
-  void set_normalized_joint_poses(const rcs::common::VectorXd &q) override {
+  void set_normalized_joint_poses(const rcs::common::VectorXd& q) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, set_normalized_joint_poses,
                            q);
   }
@@ -183,6 +183,29 @@ class PyHand : public rcs::common::Hand {
   }
 };
 
+// trampoline kinematics
+class PyKinematics : public rcs::common::Kinematics {
+  // TODO: use line below when upgraded to pybind11 3.x
+  //  public py::trampoline_self_life_support {
+ public:
+  using rcs::common::Kinematics::Kinematics;  // Inherit constructors
+
+  std::optional<rcs::common::VectorXd> inverse(
+      const rcs::common::Pose& pose, const rcs::common::VectorXd& q0,
+      const rcs::common::Pose& tcp_offset =
+          rcs::common::Pose::Identity()) override {
+    PYBIND11_OVERRIDE_PURE(std::optional<rcs::common::VectorXd>,
+                           rcs::common::Kinematics, inverse, pose, q0,
+                           tcp_offset);
+  }
+
+  rcs::common::Pose forward(const rcs::common::VectorXd& q0,
+                            const rcs::common::Pose& tcp_offset) override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Kinematics, forward,
+                           q0, tcp_offset);
+  }
+};
+
 PYBIND11_MODULE(_core, m) {
   m.doc() = R"pbdoc(
         Robot Control Stack Python Bindings
@@ -211,9 +234,9 @@ PYBIND11_MODULE(_core, m) {
   common.def("FrankaHandTCPOffset", &rcs::common::FrankaHandTCPOffset);
 
   py::class_<rcs::common::BaseCameraConfig>(common, "BaseCameraConfig")
-      .def(py::init<const std::string &, int, int, int>(),
-           py::arg("identifier"), py::arg("frame_rate"),
-           py::arg("resolution_width"), py::arg("resolution_height"))
+      .def(py::init<const std::string&, int, int, int>(), py::arg("identifier"),
+           py::arg("frame_rate"), py::arg("resolution_width"),
+           py::arg("resolution_height"))
       .def_readwrite("identifier", &rcs::common::BaseCameraConfig::identifier)
       .def_readwrite("frame_rate", &rcs::common::BaseCameraConfig::frame_rate)
       .def_readwrite("resolution_width",
@@ -236,7 +259,7 @@ PYBIND11_MODULE(_core, m) {
       .def("__str__", &rcs::common::RPY::str)
       .def(py::self + py::self)
       .def(py::pickle(
-          [](const rcs::common::RPY &p) {  // dump
+          [](const rcs::common::RPY& p) {  // dump
             return py::make_tuple(p.roll, p.pitch, p.yaw);
           },
           [](py::tuple t) {  // load
@@ -244,28 +267,38 @@ PYBIND11_MODULE(_core, m) {
                                     t[2].cast<double>());
           }));
 
+  py::class_<rcs::common::RotVec>(common, "RotVec")
+      .def(py::init<Eigen::Vector3d>(), py::arg("vec"))
+      .def("rotation_matrix", &rcs::common::RotVec::rotation_matrix)
+      .def("as_vector", &rcs::common::RotVec::as_vector)
+      .def("as_quaternion_vector", &rcs::common::RotVec::as_quaternion_vector)
+      .def("is_close", &rcs::common::RotVec::is_close, py::arg("other"),
+           py::arg("eps") = 1e-8)
+      .def("__str__", &rcs::common::RotVec::str);
+
   py::class_<rcs::common::Pose>(common, "Pose")
       .def(py::init<>())
-      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose_matrix"))
-      .def(py::init<const Eigen::Matrix3d &, const Eigen::Vector3d &>(),
+      .def(py::init<const Eigen::Matrix4d&>(), py::arg("pose_matrix"))
+      .def(py::init<const Eigen::Matrix3d&, const Eigen::Vector3d&>(),
            py::arg("rotation"), py::arg("translation"))
-      .def(py::init<const Eigen::Vector4d &, const Eigen::Vector3d &>(),
+      .def(py::init<const Eigen::Vector4d&, const Eigen::Vector3d&>(),
            py::arg("quaternion"), py::arg("translation"))
-      .def(py::init<const rcs::common::RPY &, const Eigen::Vector3d &>(),
+      .def(py::init<const rcs::common::RPY&, const Eigen::Vector3d&>(),
            py::arg("rpy"), py::arg("translation"))
-      .def(py::init<const Eigen::Vector3d &, const Eigen::Vector3d &>(),
+      .def(py::init<const Eigen::Vector3d&, const Eigen::Vector3d&>(),
            py::arg("rpy_vector"), py::arg("translation"))
-      .def(py::init<const Eigen::Vector3d &>(), py::arg("translation"))
-      .def(py::init<const Eigen::Vector4d &>(), py::arg("quaternion"))
-      .def(py::init<const rcs::common::RPY &>(), py::arg("rpy"))
-      .def(py::init<const Eigen::Matrix3d &>(), py::arg("rotation"))
-      .def(py::init<const rcs::common::Pose &>(), py::arg("pose"))
+      .def(py::init<const Eigen::Vector3d&>(), py::arg("translation"))
+      .def(py::init<const Eigen::Vector4d&>(), py::arg("quaternion"))
+      .def(py::init<const rcs::common::RPY&>(), py::arg("rpy"))
+      .def(py::init<const Eigen::Matrix3d&>(), py::arg("rotation"))
+      .def(py::init<const rcs::common::Pose&>(), py::arg("pose"))
       .def("translation", &rcs::common::Pose::translation)
       .def("rotation_m", &rcs::common::Pose::rotation_m)
       .def("rotation_q", &rcs::common::Pose::rotation_q)
       .def("pose_matrix", &rcs::common::Pose::pose_matrix)
       .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
       .def("xyzrpy", &rcs::common::Pose::xyzrpy)
+      .def("rotvec", &rcs::common::Pose::rotvec)
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
       .def("inverse", &rcs::common::Pose::inverse)
@@ -279,15 +312,19 @@ PYBIND11_MODULE(_core, m) {
       .def("__str__", &rcs::common::Pose::str)
       .def(py::self * py::self)
       .def(py::pickle(
-          [](const rcs::common::Pose &p) {  // dump
+          [](const rcs::common::Pose& p) {  // dump
             return p.affine_array();
           },
           [](std::array<double, 16> t) {  // load
             return rcs::common::Pose(t);
           }));
 
-  py::class_<rcs::common::Kinematics, std::shared_ptr<rcs::common::Kinematics>>(
+  py::class_<rcs::common::Kinematics, PyKinematics,
+             std::shared_ptr<rcs::common::Kinematics>>(
+      // TODO: use line below when upgraded to pybind11 3.x
+      // py::class_<rcs::common::Kinematics, PyKinematics, py::smart_holder>(
       common, "Kinematics")
+      .def(py::init<>())
       .def("inverse", &rcs::common::Kinematics::inverse, py::arg("pose"),
            py::arg("q0"), py::arg("tcp_offset") = rcs::common::Pose::Identity())
       .def("forward", &rcs::common::Kinematics::forward, py::arg("q0"),
@@ -295,7 +332,7 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::common::Pin, rcs::common::Kinematics,
              std::shared_ptr<rcs::common::Pin>>(common, "Pin")
-      .def(py::init<const std::string &, const std::string &, bool>(),
+      .def(py::init<const std::string&, const std::string&, bool>(),
            py::arg("path"), py::arg("frame_id") = "fr3_link8",
            py::arg("urdf") = true);
 
@@ -493,7 +530,7 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
       .def(py::init([](long m, long d) {
-             return std::make_shared<rcs::sim::Sim>((mjModel *)m, (mjData *)d);
+             return std::make_shared<rcs::sim::Sim>((mjModel*)m, (mjData*)d);
            }),
            py::arg("mjmdl"), py::arg("mjdata"))
       .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence,
@@ -509,7 +546,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::SimGripper, rcs::common::Gripper,
              std::shared_ptr<rcs::sim::SimGripper>>(sim, "SimGripper")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
-                    const rcs::sim::SimGripperConfig &>(),
+                    const rcs::sim::SimGripperConfig&>(),
            py::arg("sim"), py::arg("cfg"))
       .def("get_config", &rcs::sim::SimGripper::get_config)
       .def("get_state", &rcs::sim::SimGripper::get_state)
@@ -562,7 +599,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::SimTilburgHand, rcs::common::Hand,
              std::shared_ptr<rcs::sim::SimTilburgHand>>(sim, "SimTilburgHand")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
-                    const rcs::sim::SimTilburgHandConfig &>(),
+                    const rcs::sim::SimTilburgHandConfig&>(),
            py::arg("sim"), py::arg("cfg"))
       .def("get_config", &rcs::sim::SimTilburgHand::get_config)
       .def("get_state", &rcs::sim::SimTilburgHand::get_state)
@@ -576,7 +613,7 @@ PYBIND11_MODULE(_core, m) {
       .export_values();
   py::class_<rcs::sim::SimCameraConfig, rcs::common::BaseCameraConfig>(
       sim, "SimCameraConfig")
-      .def(py::init<const std::string &, int, int, int, rcs::sim::CameraType>(),
+      .def(py::init<const std::string&, int, int, int, rcs::sim::CameraType>(),
            py::arg("identifier"), py::arg("frame_rate"),
            py::arg("resolution_width"), py::arg("resolution_height"),
            py::arg("type") = rcs::sim::CameraType::fixed)
@@ -599,15 +636,15 @@ PYBIND11_MODULE(_core, m) {
       .def("get_timestamp_frameset",
            &rcs::sim::SimCameraSet::get_timestamp_frameset, py::arg("ts"));
   py::class_<rcs::sim::GuiClient>(sim, "GuiClient")
-      .def(py::init<const std::string &>(), py::arg("id"))
+      .def(py::init<const std::string&>(), py::arg("id"))
       .def("get_model_bytes",
-           [](const rcs::sim::GuiClient &self) {
+           [](const rcs::sim::GuiClient& self) {
              auto s = self.get_model_bytes();
              return py::bytes(s);
            })
       .def("set_model_and_data",
-           [](rcs::sim::GuiClient &self, long m, long d) {
-             self.set_model_and_data((mjModel *)m, (mjData *)d);
+           [](rcs::sim::GuiClient& self, long m, long d) {
+             self.set_model_and_data((mjModel*)m, (mjData*)d);
            })
       .def("sync", &rcs::sim::GuiClient::sync);
 }

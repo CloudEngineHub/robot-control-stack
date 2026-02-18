@@ -17,4 +17,4 @@ from __future__ import annotations
 from . import so101_ik
 
 __all__: list[str] = ["so101_ik"]
-__version__: str = "0.5.2"
+__version__: str = "0.6.2"

@@ -70,7 +70,7 @@ class RobotSimWrapper(gym.Wrapper):
         return obs, 0, False, info["collision"] or not state.ik_success, info
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim.reset()
         obs, info = super().reset(seed=seed, options=options)
@@ -103,11 +103,11 @@ class MultiSimRobotWrapper(gym.Wrapper):
         truncated = np.all([info[key]["collision"] or info[key]["ik_success"] for key in info])
         return obs, 0.0, False, bool(truncated), info
 
-    def reset(
-        self, seed: dict[str, int | None] | None = None, options: dict[str, Any] | None = None  # type: ignore
+    def reset(  # type: ignore
+        self, *, seed: dict[str, int | None] | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         if seed is None:
-            seed = {key: None for key in self.env.envs}
+            seed = dict.fromkeys(self.env.envs)
         if options is None:
             options = {key: {} for key in self.env.envs}
         obs = {}
@@ -196,7 +196,6 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             self.sim.open_gui()
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
-
         self.collision_env.get_wrapper_attr("robot").set_joints_hard(self.unwrapped.robot.get_joint_position())
         _, _, _, _, info = self.collision_env.step(action)
 
@@ -219,7 +218,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         return obs, reward, done, truncated, info
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         # check if move to home is collision free
         if self.check_home_collision:
@@ -333,7 +332,7 @@ class RandomObjectPos(SimWrapper):
         self.y_offset = y_offset
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         if options is not None and "RandomObjectPos.init_object_pose" in options:
             assert isinstance(
@@ -381,7 +380,7 @@ class RandomCubePos(SimWrapper):
         self.cube_joint_name = cube_joint_name
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         obs, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
@@ -402,50 +401,74 @@ class RandomCubePos(SimWrapper):
 
 
 class PickCubeSuccessWrapper(gym.Wrapper):
-    """Wrapper to check if the cube is successfully picked up in the FR3SimplePickUpSim environment."""
-
-    EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
+    """
+    Wrapper to check if the cube is successfully picked up in the FR3SimplePickUpSim environment.
+    Cube must be lifted 10 cm above the robot base.
+    Computes a reward between 0 and 1 based on:
+    - TCP to object distance
+    - cube z height
+    - whether the arm is standing still once the task is solved.
+    """
 
     def __init__(self, env, cube_joint_name="box_joint"):
         super().__init__(env)
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
-        self.cube_joint_name = cube_joint_name
+        self.cube_geom_name = "box_geom"
+        self.home_pose = self.unwrapped.robot.get_cartesian_position()
+        self._gripper_closing = 0
+        self._gripper = self.get_wrapper_attr("_gripper")
 
-    def step(self, action: dict[str, Any]):
+    def step(self, action: dict[str, Any]):  # type: ignore
         obs, reward, _, truncated, info = super().step(action)
-
-        success = (
-            self.sim.data.joint(self.cube_joint_name).qpos[2] > 0.15 + 0.852
+        if (
+            self._gripper.get_normalized_width() > 0.01
+            and self._gripper.get_normalized_width() < 0.99
             and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
-        )
-        info["success"] = success
-        if success:
-            reward = 5
+        ):
+            self._gripper_closing += 1
         else:
-            tcp_to_obj_dist = np.linalg.norm(
-                self.sim.data.joint(self.cube_joint_name).qpos[:3]
-                - self.unwrapped.robot.get_cartesian_position().translation()
-            )
-            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint(self.cube_joint_name).qpos[:3] - self.EE_HOME)
+            self._gripper_closing = 0
+        cube_pose = rcs.common.Pose(translation=self.sim.data.geom(self.cube_geom_name).xpos)
+        cube_pose = self.unwrapped.robot.to_pose_in_robot_coordinates(cube_pose)
+        tcp_to_obj_dist = np.linalg.norm(
+            cube_pose.translation() - self.unwrapped.robot.get_cartesian_position().translation()
+        )
+        obj_to_goal_dist = 0.10 - min(cube_pose.translation()[-1], 0.10)
+        obj_to_goal_dist = np.linalg.norm(cube_pose.translation() - self.home_pose.translation())
+        # NOTE: 4 depends on the time passing between each step.
+        is_grasped = (
+            self._gripper_closing >= 4  # gripper is closing since more than 4 steps
+            and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED  # command is still close
+            and tcp_to_obj_dist <= 0.01  # tcp to cube center is max 1cm
+        )
+        success = obj_to_goal_dist <= 0.022 and info["is_grasped"]
+        movement = np.linalg.norm(self.sim.data.qvel)
 
-            # old reward
-            # reward = -obj_to_goal_dist - tcp_to_obj_dist
-
-            # Maniskill grasp reward
-            reaching_reward = 1 - np.tanh(5 * tcp_to_obj_dist)
-            reward = reaching_reward
-            is_grasped = info["is_grasped"]
-            reward += is_grasped
-            place_reward = 1 - np.tanh(5 * obj_to_goal_dist)
-            reward += place_reward * is_grasped
-
-            # velocities are currently always zero after a step
-            # qvel = self.agent.robot.get_qvel()
-            # static_reward = 1 - np.tanh(5 * np.linalg.norm(qvel, axis=1))
-            # reward += static_reward * info["is_obj_placed"]
-
-        # normalize
-        reward /= 5  # type: ignore
+        reaching_reward = 1 - np.tanh(5 * tcp_to_obj_dist)
+        place_reward = 1 - np.tanh(5 * obj_to_goal_dist)
+        static_reward = 1 - np.tanh(5 * movement)
+        info["is_grasped"] = is_grasped
+        info["success"] = success
+        reward = reaching_reward + place_reward * is_grasped + static_reward * success
+        reward /= 3  # type: ignore
         return obs, reward, success, truncated, info
+
+    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None):
+        obs, info = super().reset()
+        self.home_pose = self.unwrapped.robot.get_cartesian_position()
+        return obs, info
+
+
+class DigitalTwin(gym.Wrapper):
+    def __init__(self, env, twin_env):
+        super().__init__(env)
+        self.twin_env = twin_env
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = super().step(action)
+
+        twin_obs, _, _, _, _ = self.twin_env.step(obs)
+        info["twin_obs"] = twin_obs
+        return obs, reward, terminated, truncated, info

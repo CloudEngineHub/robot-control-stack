@@ -1,3 +1,92 @@
+## v0.6.2 (2026-02-17)
+
+### Feat
+
+- **realsense**: align depth and rgb option (#257)
+
+### Fix
+
+- **panda**: cfg arg in constructor available in py (#258)
+- **examples**: wrong named robot config var
+- **franka**: left over ik refactor (#256)
+
+## v0.6.1 (2026-01-28)
+
+### Feat
+
+- **franka**: forward controller exceptions to python
+
+### Fix
+
+- **examples**: ur5e gripper definition
+- **gripper**: gripper state as list as defined by gym space
+- **tacto**: replace hydra with omegaconf
+- **tacto**: version
+
+## v0.6.0 (2026-01-23)
+
+### Feat
+
+- more precise is_grasped and rewards for pick cube
+- **fr3**: frankik integration for analytical fast franka ik
+- pybind trampoline and constructor for kinematics
+- readded robotiq gripper for ur5e in sim
+- adds franka state bindings and and state observation (#241)
+- teleop meta quest #240
+- adds digital twin and quest frame aligner
+- **teleop**: recording logic and digital twin
+- digital twin wrapper
+- **recorder**: add delayed action
+- **recorder**: success attribute
+- storage wrapper added recording logic
+- storage wrapper for parquet recording
+- add multi robot sim wrapper
+- added iris teleop script
+- teleop with meta quest
+- more flexible ik for 5 dof so101 (#230)
+- **extensions**: support for franka emika panda robot #222
+- added desk and cli tool to panda
+- **extensions**: symlinked fr3 code to panda to avoid code duplication
+- **extensions**: added panda mjcf files for mujoco sim
+- **extensions**: initial support for franka emika panda robot
+- **hw**: added UR5 python package
+- UR5 mjcf
+
+### Fix
+
+- **teleop**: moving while reset
+- **fr3**: remove robot_mode to allow recording
+- **storage wrapper**: avoid data loss when crash
+- **fr3,panda**: robot state
+- **storage wrapper**: record and pause logic, depth compression
+- hot fix fr3 broken robot state
+- fr3 frankik ik
+- ur5e sim example
+- **fr3**: resetting behavior
+- **recorder**: uuid partioning, added instruction
+- **teleop**: multi robot env and iris
+- **sim**: allow scene path fallback
+- fr3 and panda init (#238)
+- **sim**: fix collision detection and improve gripper/robot reset (#231)
+- **fr3,panda**: franka control and franka hand proper close (#229)
+- **extensions**: missing franka config constructor (#227)
+- mujoco not found in make commands
+- **panda**: using FR3 class name for linting and ik
+- **panda**: compile old libfranka version with c++17
+- **panda**: symlink between panda and fr3
+- removed double rcs_fr3 module
+- **panda**: remove robotics library and add libfranka cpp20 compilation
+- **fr3**: removed robotics library refactor left over
+- **sim**: hard reset replaced with soft reset
+
+### Refactor
+
+- move tacto frames into camera frames
+- **fr3**: multi env with dicts (#226)
+- rename fr3 class to franka
+- rename fr3 to panda
+- rename files to panda
+
 ## v0.5.2 (2025-10-09)
 
 ### Feat

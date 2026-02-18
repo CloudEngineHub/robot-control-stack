@@ -60,8 +60,8 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
       {UR5e,
        RobotMetaConfig{
            // q_home (6‐vector):
-           (VectorXd(6) << -0.4488354, -2.02711196, 1.64630026, -1.18999615,
-            -1.57079762, -2.01963249)
+           (VectorXd(6) << 0.0, -2.02711196, 1.64630026, -1.18999615,
+            -1.57079762, 0.0)
                .finished(),
            // dof:
            6,

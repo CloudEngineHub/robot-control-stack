@@ -1,9 +1,12 @@
 import logging
+import typing
 from os import PathLike
 
 import gymnasium as gym
 import numpy as np
 import rcs.hand.tilburg_hand
+from frankik import FrankaKinematics
+from rcs._core.common import Kinematics, Pose
 from rcs.camera.hw import HardwareCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
@@ -25,6 +28,27 @@ import rcs
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+class FrankIK(Kinematics):
+    def __init__(self, global_solution: bool = False):
+        Kinematics.__init__(self)
+        self.global_solution = global_solution
+        self.kin = FrankaKinematics(robot_type="fr3")
+
+    def forward(self, q0: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]], tcp_offset: Pose) -> Pose:  # type: ignore
+        print("forward called")
+        return Pose(pose_matrix=self.kin.forward(q0, tcp_offset.pose_matrix()))
+
+    def inverse(  # type: ignore
+        self, pose: Pose, q0: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]], tcp_offset: Pose
+    ) -> np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]] | None:
+        return self.kin.inverse(pose.pose_matrix(), q0, tcp_offset.pose_matrix(), global_solution=self.global_solution)
+
+
+# FYI: this needs to be in global namespace to avoid auto garbage collection issues
+# pybind11 3.x would avoid this but with smart_holder but we cannot update due to the subfiles issue yet
+FastIK = FrankIK()
 
 
 class RCSFR3EnvCreator(RCSHardwareEnvCreator):
@@ -62,6 +86,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             robot_cfg.attachment_site,
             urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
         )
+        # ik = FastIK
         # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
         robot = hw.Franka(ip, ik)
         robot.set_config(robot_cfg)
