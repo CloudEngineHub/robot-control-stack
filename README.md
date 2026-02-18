@@ -1,25 +1,43 @@
-<img src="https://raw.githubusercontent.com/RobotControlStack/robotcontrolstack.github.io/refs/heads/master/static/images/rcs_logo_line.svg" alt="rcs logo" width="100%">
+<div align="center">
+  <img src="https://raw.githubusercontent.com/RobotControlStack/robotcontrolstack.github.io/refs/heads/master/static/images/rcs_logo_line.svg" alt="rcs logo" width="60%">
 
-**Robot Control Stack (RCS)** is a flexible Gymnasium wrapper-based robot control interface made for robot learning and specifically Vision-Language-Action (VLA) models.
-It unifies MuJoCo simulation and real world robot control with four supported robots: FR3/Panda, xArm7, UR5e and SO101.
-It ships with several pre-build apps including data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents).
+  ### A lean, ROS-free Sim-to-Real framework for training and deploying Vision-Language-Action (VLA) models and Reinforcement Learning (RL) agents.
 
+  [![Documentation](https://img.shields.io/badge/docs-robotcontrolstack.org-blue.svg)](https://robotcontrolstack.org)
+  [![Paper](https://img.shields.io/badge/paper-ICRA_2026-green.svg)](https://robotcontrolstack.github.io/)
+  [![Release](https://img.shields.io/github/v/release/RobotControlStack/robot-control-stack?color=orange)](https://github.com/RobotControlStack/robot-control-stack/releases)
+  [![License](https://img.shields.io/github/license/RobotControlStack/robot-control-stack?color=blueviolet)](https://github.com/RobotControlStack/robot-control-stack/blob/main/LICENSE)
+  [![CI Status](https://github.com/RobotControlStack/robot-control-stack/actions/workflows/ci.yaml/badge.svg)](https://github.com/RobotControlStack/robot-control-stack/actions)
+</div>
 
-<video 
-  src="https://github.com/user-attachments/assets/21ac29af-373b-46aa-8a08-ae0ae8c0e235" 
-  autoplay 
-  muted 
-  loop 
-  playsinline
-  style="max-width: 100%;">
-</video>
+---
 
-## Wrapper-Based Architecture
+**Robot Control Stack (RCS)** is a flexible, native [Gymnasium](https://gymnasium.farama.org/) wrapper-based robot control interface designed specifically for modern robot learning and Vision-Language-Action (VLA) models. 
+
+It completely unifies **MuJoCo simulation** and real-world physical robot control into a single, seamless API. Currently, RCS natively supports four robots out-of-the-box: **Franka FR3/Panda, xArm7, UR5e, and SO101.**
+
+![RCS Demo](https://raw.githubusercontent.com/RobotControlStack/robotcontrolstack.github.io/refs/heads/master/static/videos/grid.webp)
+
+## 🚀 Why use Robot Control Stack?
+
+Traditional robotics middleware (like ROS/ROS2) and complex motion planning pipelines (like MoveIt or standard `ros2_control`) are built for asynchronous, distributed systems. This often becomes a massive bottleneck when attempting to train modern, synchronous machine learning models.
+
+**RCS is built differently:**
+* **Zero ROS Overhead:** No complex message-passing, middleware, or network configuration required. Run natively in Python with a lightweight C++ backend.
+* **Frictionless Sim-to-Real:** Train your Reinforcement Learning or VLA policies in our MuJoCo Gymnasium wrapper, and deploy the *exact same code* directly to physical hardware.
+* **Synchronous Execution:** Optimized specifically for the highly parallelized, synchronous data collection required by modern ML workflows.
+* **Ready-to-Use Apps:** Ships with pre-built applications for data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents).
+
+## 🧩 Wrapper-Based Architecture
+
+RCS utilizes a highly modular, wrapper-based architecture, allowing you to easily stack capabilities (cameras, grippers, action spaces) as needed.
 
 <img src="docs/_static/rcs_architecture_small.svg" alt="rcs architecture diagram" width="100%">
 
-## Example
-Flexibly compose your gym environment to your needs:
+## 💻 Example: Composing your Environment
+
+Flexibly compose your Gymnasium environment to fit your exact training needs. *For common environment compositions, factory functions such as `rcs.envs.creators.SimEnvCreator` are provided.*
+
 ```python
 from time import sleep
 
@@ -93,18 +111,21 @@ if __name__ == "__main__":
         act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": [0]}
         obs, reward, terminated, truncated, info = env.step(act)
         print(obs)
-```
-For common environment compositions factory functions such as `rcs.envs.creators.SimEnvCreator` are provided.
-This and other example can be found in the [examples](examples/) folder.
 
-## Installation
+```
+
+> **Note:** This and other examples can be found in the [`examples/`]() folder.
+
+## 🛠️ Installation
+
 ### From Source
 
-Make sure that common build tools i.e. `build-essential` and a C++ compiler like `gcc` or `clang` are installed on your system/conda/docker.
+Make sure that common build tools (i.e., `build-essential`) and a C++ compiler like `gcc` or `clang` are installed on your system/conda/docker.
 
-RCS works best in python 3.11, all extensions have been tested to work in 3.11.
-- For python >3.11 the `rcs_realsense` extension wont work for the pyrealsense2 version that RCS is using.
-- For python >3.12 the ompl python module is not available on pypi as of now. If OMPL is not used, it's save to remove this dependency in the pyproject.toml.
+*RCS works best in Python 3.11, and all extensions have been tested to work in 3.11.*
+
+* *For Python >3.11: The `rcs_realsense` extension won't work due to the `pyrealsense2` version RCS utilizes.*
+* *For Python >3.12: The `ompl` python module is currently not available on PyPI. If OMPL is not used, it is safe to remove this dependency in `pyproject.toml`.*
 
 ```shell
 # setup environment
@@ -117,32 +138,43 @@ pip install --group build_deps
 
 # install rcs
 pip install -ve .
+
 ```
 
 ### Via PyPI/pip
-Coming soon...
 
-## Hardware Extensions
+*Coming soon...*
 
-RCS supports various hardware extensions (e.g., FR3, xArm7, RealSense). These are located in the `extensions` directory.
+## 🦾 Hardware Extensions
 
-To install an extension:
+RCS supports various hardware extensions to seamlessly connect your policies to the real world (e.g., FR3, xArm7, RealSense). These are located in the `extensions` directory.
+
+To install a specific robot extension (example for Franka FR3):
 
 ```shell
 pip install -ve extensions/rcs_fr3
 ```
 
-For a full list of extensions and detailed documentation, visit [robotcontrolstack.org/extensions](https://robotcontrolstack.org/extensions).
+For a full list of extensions and detailed documentation, visit **[robotcontrolstack.org/extensions](https://robotcontrolstack.org/extensions)**.
 
-## Documentation
-For full documentation, including installation, usage, and API reference, please visit:
-**[robotcontrolstack.org](https://robotcontrolstack.org)**
+## ⚠️ Troubleshooting & FAQ
+* **License error or group argument not found during installation?** Make sure you are using a pip version `>=25.1` and setuptools version `>=45`.
+* **Dependency error during installation?** Make sure you are using Python 3.11. RCS extensions currently do not support 3.12+ due to OMPL and RealSense dependencies.
+* **Simulation is running too slow?** Check that you have enable on-demand rendering: `SimCameraSet(..., render_on_demand=True)` to render camera frames only once per step. Resolution and number of cameras in the scene has a large impact on simulation speed. Make sure to use a decent GPU when rendering is enabled.
 
-## Contribution
-For contribution guidelines checkout [robotcontrolstack.org/contributing](https://robotcontrolstack.org/contributing)
 
-## Citation
-If you find RCS useful for your academic work, please consider citing it:
+## 📚 Documentation
+
+For full documentation, including advanced installation, modular usage, and API references, please visit:
+👉 **[robotcontrolstack.org](https://robotcontrolstack.org)**
+
+## 🤝 Contribution
+
+We welcome contributions from the robotics and ML community! For contribution guidelines, please check out **[robotcontrolstack.org/contributing](https://robotcontrolstack.org/contributing)**.
+
+## 📝 Citation
+
+If you find RCS useful for your academic work please consider citing it:
 
 ```bibtex
 @inproceedings{juelg2026robotcontrolstack,
@@ -153,4 +185,6 @@ If you find RCS useful for your academic work, please consider citing it:
   note={Accepted for publication.}
 }
 ```
-For more scientific info, visit the [paper website](https://robotcontrolstack.github.io/).
+
+For more scientific information and supplementary videos, visit the **[paper website](https://robotcontrolstack.github.io/)**.
+
