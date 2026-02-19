@@ -1,3 +1,14 @@
+## v0.6.3 (2026-02-19)
+
+### Feat
+
+- add robotiq
+
+### Fix
+
+- **robotiq**: source file naming
+- **robotiq**: usage of the python lib
+
 ## v0.6.2 (2026-02-17)
 
 ### Feat
