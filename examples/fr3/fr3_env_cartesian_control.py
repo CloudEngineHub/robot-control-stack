@@ -24,7 +24,7 @@ fr3_direct_control.py example which uses the FCI context manager.
 """
 
 # TODO: set to RobotPlatform.HARDWARE to control a real FR3 robot
-ROBOT_INSTANCE = RobotPlatform.SIMULATION  #HARDWARE
+ROBOT_INSTANCE = RobotPlatform.HARDWARE
 FR3_IP = "192.168.103.1"
 
 
@@ -47,7 +47,7 @@ def main():
             ip=FR3_IP,
             control_mode=ControlMode.CARTESIAN_TQuat,
             robot_cfg=default_fr3_hw_robot_cfg(),
-            gripper_cfg=default_fr3_hw_gripper_cfg(),
+            # gripper_cfg=default_fr3_hw_gripper_cfg(),
             camera_set=None,
             max_relative_movement=0.5,
             relative_to=RelativeTo.LAST_STEP,
