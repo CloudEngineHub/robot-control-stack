@@ -11,7 +11,7 @@ from rcs_fr3.utils import default_fr3_hw_robot_cfg
 import rcs
 from rcs import sim
 
-ROBOT_IP = "192.168.101.1"
+ROBOT_IP = "192.168.103.1"
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
 
 logger = logging.getLogger(__name__)
