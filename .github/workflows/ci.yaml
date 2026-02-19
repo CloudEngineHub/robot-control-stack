@@ -71,7 +71,7 @@ jobs:
           # Python extensions
           - rcs_xarm7
           - rcs_realsense
-          # - rcs_robotiq
+          - rcs_robotiq2f85
           - rcs_tacto
           - rcs_usb_cam
     runs-on: ubuntu-latest
