@@ -1,0 +1,227 @@
+from dataclasses import dataclass
+import logging
+import threading
+from time import sleep
+
+import numpy as np
+from rcs._core.common import Pose
+from rcs.envs.base import ArmWithGripper, ControlMode, GripperDictType, RelativeActionSpace, RelativeTo, TQuatDictType
+from rcs.operator.interface import BaseOperator, BaseOperatorConfig
+from rcs.utils import SimpleFrameRate
+from simpub.core.simpub_server import SimPublisher
+from simpub.parser.simdata import SimObject, SimScene
+from simpub.sim.mj_publisher import MujocoPublisher
+from simpub.xr_device.meta_quest3 import MetaQuest3
+
+logger = logging.getLogger(__name__)
+
+# download the iris apk from the following repo release: https://github.com/intuitive-robots/IRIS-Meta-Quest3
+# in order to use usb connection install adb install adb
+# sudo apt install android-tools-adb
+# install it on your quest with
+# adb install IRIS-Meta-Quest3.apk
+
+class FakeSimPublisher(SimPublisher):
+    def get_update(self):
+        return {}
+
+class FakeSimScene(SimScene):
+    def __init__(self):
+        super().__init__()
+        self.root = SimObject(name="root")
+
+@dataclass(kw_only=True)
+class QuestConfig(BaseOperatorConfig):
+    robot_keys: list[str]
+    read_frame_rate: int = 30
+    include_rotation: bool = True
+    simulation: bool = False
+    mq3_addr: str = "10.42.0.1"
+
+
+class QuestOperator(BaseOperator):
+
+    transform_to_robot = Pose()
+
+    control_mode = (ControlMode.CARTESIAN_TQuat, RelativeTo.CONFIGURED_ORIGIN)
+
+    def __init__(self, env, config: QuestConfig):
+        super().__init__(env, config)
+        self.config: QuestConfig
+        self._reader = MetaQuest3("RCSNode")
+
+        self.resource_lock = threading.Lock()
+
+        self.controller_names = self.config.robot_keys
+        self._trg_btn = {"left": "index_trigger", "right": "index_trigger"}
+        self._grp_btn = {"left": "hand_trigger", "right": "hand_trigger"}
+        self._start_btn = "A"
+        self._stop_btn = "B"
+        self._unsuccessful_btn = "Y"
+
+        self._prev_data = None
+        self._exit_requested = False
+        self._grp_pos = {key: 1.0 for key in self.controller_names}  # start with opened gripper
+        self._last_controller_pose = {key: Pose() for key in self.controller_names}
+        self._offset_pose = {key: Pose() for key in self.controller_names}
+
+        for robot in self.config.robot_keys:
+            self.env.envs[robot].set_origin_to_current()
+
+        self._step_env = False
+        self._set_frame = {key: Pose() for key in self.controller_names}
+        if self.config.simulation:
+            FakeSimPublisher(FakeSimScene(), self.config.mq3_addr)
+            # robot_cfg = default_sim_robot_cfg("fr3_empty_world")
+            # sim_cfg = SimConfig()
+            # sim_cfg.async_control = True
+            # twin_env = SimMultiEnvCreator()(
+            #     name2id=ROBOT2IP,
+            #     robot_cfg=robot_cfg,
+            #     control_mode=ControlMode.JOINTS,
+            #     gripper_cfg=default_sim_gripper_cfg(),
+            #     sim_cfg=sim_cfg,
+            # )
+            # sim = env_rel.unwrapped.envs[ROBOT2IP.keys().__iter__().__next__()].sim
+            # sim.open_gui()
+            # MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
+            # env_rel = DigitalTwin(env_rel, twin_env)
+        else:
+            sim = self.env.unwrapped.envs[self.controller_names[0]].sim  # type: ignore
+            MujocoPublisher(sim.model, sim.data, self.config.mq3_addr, visible_geoms_groups=list(range(1, 3)))
+
+
+
+
+    def get_action(self) -> dict[str, ArmWithGripper]:
+        with self.resource_lock:
+            transforms = {}
+            for controller in self.controller_names:
+                transform = Pose(
+                    translation=(
+                        self._last_controller_pose[controller].translation()  # type: ignore
+                        - self._offset_pose[controller].translation()
+                    ),
+                    quaternion=(
+                        self._last_controller_pose[controller] * self._offset_pose[controller].inverse()
+                    ).rotation_q(),
+                )
+
+                set_axes = Pose(quaternion=self._set_frame[controller].rotation_q())
+
+                transform = (
+                      set_axes.inverse()
+                    * transform
+                    * set_axes
+                )
+                if not self.config.include_rotation:
+                    transform = Pose(translation=transform.translation())  # identity rotation
+                transforms[controller] = TQuatDictType(tquat=np.concatenate([transform.translation(), transform.rotation_q()]))
+                transforms[controller].update(
+                    GripperDictType(gripper=self._grp_pos[controller])
+                )
+        return transforms
+
+    def run(self):
+        rate_limiter = SimpleFrameRate(self.config.read_frame_rate, "teleop readout")
+        warning_raised = False
+        while not self._exit_requested:
+            # pos, buttons = self._reader.get_transformations_and_buttons()
+            input_data = self._reader.get_controller_data()
+            if not warning_raised and input_data is None:
+                logger.warning("[Quest Reader] packets empty")
+                warning_raised = True
+                sleep(0.5)
+                continue
+            if input_data is None:
+                sleep(0.5)
+                continue
+            if warning_raised:
+                logger.warning("[Quest Reader] packets arriving again")
+                warning_raised = False
+
+            # start recording
+            if input_data[self._start_btn] and (self._prev_data is None or not self._prev_data[self._start_btn]):
+                print("start button pressed")
+                self.env.get_wrapper_attr("start_record")()
+
+            if input_data[self._stop_btn] and (self._prev_data is None or not self._prev_data[self._stop_btn]):
+                print("reset successful pressed: resetting env")
+                with self.reset_lock:
+                    # set successful
+                    self.env.get_wrapper_attr("success")()
+                    # sleep to allow to let the robot reach the goal
+                    sleep(1)
+                    # this might also move the robot to the home position
+                    self.env.reset()
+                    for controller in self.controller_names:
+                        self._offset_pose[controller] = Pose()
+                        self._last_controller_pose[controller] = Pose()
+                        self._grp_pos[controller] = 1
+                    continue
+
+            # reset unsuccessful
+            if input_data[self._unsuccessful_btn] and (
+                self._prev_data is None or not self._prev_data[self._unsuccessful_btn]
+            ):
+                print("reset unsuccessful pressed: resetting env")
+                self.env.reset()
+
+            for controller in self.controller_names:
+                last_controller_pose = Pose(
+                    translation=np.array(input_data[controller]["pos"]),
+                    quaternion=np.array(input_data[controller]["rot"]),
+                )
+                if controller == "left":
+                    last_controller_pose = (
+                        Pose(translation=np.array([0, 0, 0]), rpy=RPY(roll=0, pitch=0, yaw=np.deg2rad(180)))  # type: ignore
+                        * last_controller_pose
+                    )
+
+                if input_data[controller][self._trg_btn[controller]] and (
+                    self._prev_data is None or not self._prev_data[controller][self._trg_btn[controller]]
+                ):
+                    # trigger just pressed (first data sample with button pressed)
+
+                    with self.resource_lock:
+                        self._offset_pose[controller] = last_controller_pose
+                        self._last_controller_pose[controller] = last_controller_pose
+
+                elif not input_data[controller][self._trg_btn[controller]] and (
+                    self._prev_data is None or self._prev_data[controller][self._trg_btn[controller]]
+                ):
+                    # released
+                    transform = Pose(
+                        translation=(
+                            self._last_controller_pose[controller].translation()  # type: ignore
+                            - self._offset_pose[controller].translation()
+                        ),
+                        quaternion=(
+                            self._last_controller_pose[controller] * self._offset_pose[controller].inverse()
+                        ).rotation_q(),
+                    )
+                    print(np.linalg.norm(transform.translation()))
+                    print(np.rad2deg(transform.total_angle()))
+                    with self.resource_lock:
+                        self._last_controller_pose[controller] = Pose()
+                        self._offset_pose[controller] = Pose()
+                    self.env.envs[controller].set_origin_to_current()
+
+                elif input_data[controller][self._trg_btn[controller]]:
+                    # button is pressed
+                    with self.resource_lock:
+                        self._last_controller_pose[controller] = last_controller_pose
+
+                if input_data[controller][self._grp_btn[controller]] and (
+                    self._prev_data is None or not self._prev_data[controller][self._grp_btn[controller]]
+                ):
+                    # just pressed
+                    self._grp_pos[controller] = 0
+                if not input_data[controller][self._grp_btn[controller]] and (
+                    self._prev_data is None or self._prev_data[controller][self._grp_btn[controller]]
+                ):
+                    # just released
+                    self._grp_pos[controller] = 1
+
+            self._prev_data = input_data
+            rate_limiter()

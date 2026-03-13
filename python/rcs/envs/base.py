@@ -167,6 +167,8 @@ class ArmObsType(TQuatDictType, JointsDictType, TRPYDictType): ...
 CartOrJointContType: TypeAlias = TQuatDictType | JointsDictType | TRPYDictType
 LimitedCartOrJointContType: TypeAlias = LimitedTQuatRelDictType | LimitedJointsRelDictType | LimitedTRPYRelDictType
 
+class ArmWithGripper(CartOrJointContType, GripperDictType): ...
+
 
 class ControlMode(Enum):
     JOINTS = auto()
@@ -358,6 +360,7 @@ class MultiRobotWrapper(gym.Env):
 class RelativeTo(Enum):
     LAST_STEP = auto()
     CONFIGURED_ORIGIN = auto()
+    NONE = auto()
 
 
 class RelativeActionSpace(gym.ActionWrapper):
